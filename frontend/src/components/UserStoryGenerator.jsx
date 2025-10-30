@@ -48,8 +48,8 @@ export default function UserStoryGenerator() {
     setGeneratedStory('');
 
     try {
-      const API_URL = process.env.NODE_ENV === 'development' ? '' : 'https://gerador-historias-backend.onrender.com';
-
+      const API_URL = 'https://gerador-historias-backend.onrender.com';
+      
       const response = await fetch(`${API_URL}/api/generate-story`, {
         method: 'POST',
         headers: {
@@ -78,95 +78,134 @@ export default function UserStoryGenerator() {
   };
 
   const downloadPDF = async () => {
-    if (!storyRef.current) return;
+    if (!storyRef.current || !generatedStory) {
+      alert('Gere uma história primeiro antes de baixar o PDF.');
+      return;
+    }
 
     try {
-      const canvas = await html2canvas(storyRef.current, {
+      // Criar elemento temporário para o PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.style.cssText = `
+        position: fixed;
+        left: -10000px;
+        top: -10000px;
+        width: 800px;
+        background: white;
+        padding: 40px;
+        font-family: Arial, sans-serif;
+        color: #003F51;
+        line-height: 1.6;
+      `;
+
+      // Cabeçalho profissional
+      const header = `
+        <div style="
+          border-bottom: 3px solid #21B8D5;
+          padding-bottom: 15px;
+          margin-bottom: 25px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        ">
+          <div>
+            <h1 style="color: #003F51; margin: 0; font-size: 24px; font-weight: bold;">
+              SINAPSYS TECNOLOGIA
+            </h1>
+            <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">
+              Gerador de Histórias de Usuário - Documento Profissional
+            </p>
+          </div>
+          <div style="
+            background: #003F51;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid #21B8D5;
+          ">
+            🧠 SINAPSYS
+          </div>
+        </div>
+      `;
+
+      // Informações do projeto
+      const projectInfo = `
+        <div style="
+          background: #F8FAFC;
+          border-left: 4px solid #003F51;
+          padding: 20px;
+          margin-bottom: 25px;
+          border-radius: 0 8px 8px 0;
+        ">
+          <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: bold;">
+            📋 INFORMAÇÕES DO PROJETO
+          </div>
+          <div style="font-size: 18px; font-weight: bold; color: #003F51; margin-bottom: 5px;">
+            ${formData.projectTitle || 'Não informado'}
+          </div>
+          <div style="font-size: 14px; color: #666; margin-bottom: 5px;">
+            <strong>Cliente:</strong> ${formData.clientName || 'Não informado'}
+          </div>
+          <div style="font-size: 12px; color: #999;">
+            <strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}
+          </div>
+        </div>
+      `;
+
+      // Processar o conteúdo da história para HTML
+      const processStoryForPDF = (story) => {
+        return story
+          .replace(/\n/g, '<br>')
+          .replace(/# (.*?)(?=\n|$)/g, '<h1 style="color: #003F51; border-bottom: 2px solid #21B8D5; padding-bottom: 8px; margin: 25px 0 15px 0; font-size: 20px;">$1</h1>')
+          .replace(/## (.*?)(?=\n|$)/g, '<h2 style="color: #003F51; background: #F7EDE5; padding: 10px 15px; border-radius: 5px; margin: 20px 0 15px 0; font-size: 16px;">$1</h2>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #003F51;">$1</strong>')
+          .replace(/\-\-\-/g, '<hr style="border: 1px dashed #21B8D5; margin: 25px 0; opacity: 0.5;">')
+          .replace(/\- \[ \] (.*?)(?=\n|$)/g, '<div style="margin: 8px 0; padding-left: 20px;">◻️ $1</div>')
+          .replace(/\- \[x\] (.*?)(?=\n|$)/g, '<div style="margin: 8px 0; padding-left: 20px;">✅ <strong>$1</strong></div>')
+          .replace(/✅ (.*?)(?=\n|$)/g, '<div style="margin: 10px 0; padding: 8px 12px; background: #F0F9FF; border-left: 3px solid #21B8D5; border-radius: 0 5px 5px 0;">✅ $1</div>')
+          .replace(/📁 |🔍 |📊 |🔧 /g, '<span style="font-size: 16px; margin-right: 5px;">$&</span>');
+      };
+
+      const storyContent = processStoryForPDF(generatedStory);
+
+      tempDiv.innerHTML = header + projectInfo + `
+        <div style="font-size: 14px; color: #333;">
+          ${storyContent}
+        </div>
+        
+        <div style="
+          margin-top: 40px;
+          padding-top: 20px;
+          border-top: 2px solid #E0C4AD;
+          font-size: 11px;
+          color: #666;
+          text-align: center;
+          background: #F7EDE5;
+          padding: 15px;
+          border-radius: 5px;
+        ">
+          <strong>Documento confidencial - Sinapsys Tecnologia</strong><br>
+          © ${new Date().getFullYear()} - Todos os direitos reservados<br>
+          <em>Gerado automaticamente pelo Sistema de Gestão de Histórias de Usuário</em>
+        </div>
+      `;
+
+      document.body.appendChild(tempDiv);
+
+      const canvas = await html2canvas(tempDiv, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#FFFFFF',
-        onclone: function(clonedDoc) {
-          // Adiciona cabeçalho profissional ao conteúdo clonado
-          const storyElement = clonedDoc.querySelector('[ref="storyRef"]');
-          if (storyElement) {
-            // Cria container do cabeçalho
-            const headerDiv = clonedDoc.createElement('div');
-            headerDiv.style.cssText = `
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              background: #003F51;
-              color: white;
-              padding: 12px 20px;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              box-sizing: border-box;
-              z-index: 1000;
-              border-bottom: 2px solid #21B8D5;
-            `;
-            
-            // Texto do cabeçalho
-            const headerText = clonedDoc.createElement('div');
-            headerText.style.cssText = `
-              font-family: Arial, sans-serif;
-              font-size: 16px;
-              font-weight: bold;
-              line-height: 1.2;
-            `;
-            headerText.innerHTML = 'SINAPSYS TECNOLOGIA<br><span style="font-size: 10px; font-weight: normal;">Gerador de Histórias de Usuário</span>';
-            
-            // Logo (substitua pela URL do seu logo quando tiver)
-            const logoImg = clonedDoc.createElement('div');
-            logoImg.style.cssText = `
-              width: 120px;
-              height: 30px;
-              background: #21B8D5;
-              color: white;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 10px;
-              font-weight: bold;
-              border-radius: 4px;
-            `;
-            logoImg.innerHTML = 'LOGO SINAPSYS';
-            
-            headerDiv.appendChild(headerText);
-            headerDiv.appendChild(logoImg);
-            
-            // Ajusta o padding do conteúdo para o cabeçalho
-            storyElement.style.paddingTop = '70px';
-            storyElement.style.position = 'relative';
-            storyElement.style.minHeight = 'calc(400px + 70px)';
-            storyElement.insertBefore(headerDiv, storyElement.firstChild);
-
-            // Adiciona informações do projeto no conteúdo
-            const projectInfo = clonedDoc.createElement('div');
-            projectInfo.style.cssText = `
-              margin-bottom: 20px;
-              padding: 15px;
-              background: #F8FAFC;
-              border-left: 4px solid #003F51;
-              font-family: Arial, sans-serif;
-            `;
-            projectInfo.innerHTML = `
-              <div style="font-size: 12px; color: #666; margin-bottom: 5px;">INFORMAÇÕES DO PROJETO</div>
-              <div style="font-size: 14px; font-weight: bold; color: #003F51;">${formData.projectTitle}</div>
-              <div style="font-size: 12px; color: #666;">Cliente: ${formData.clientName}</div>
-              <div style="font-size: 10px; color: #999;">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
-            `;
-
-            // Insere as informações do projeto após o cabeçalho
-            const content = storyElement.querySelector('pre') || storyElement;
-            if (content) {
-              storyElement.insertBefore(projectInfo, content);
-            }
-          }
-        }
+        width: 800,
+        height: tempDiv.scrollHeight,
+        windowWidth: 800,
+        windowHeight: tempDiv.scrollHeight
       });
+
+      document.body.removeChild(tempDiv);
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -176,12 +215,16 @@ export default function UserStoryGenerator() {
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
       const ratio = imgHeight / imgWidth;
-      const imgPDFHeight = pdfWidth * ratio;
+      let imgPDFHeight = pdfWidth * ratio;
       
-      // Adiciona a imagem ao PDF
+      // Se a imagem for muito alta, ajusta para caber
+      if (imgPDFHeight > pdfHeight * 3) {
+        imgPDFHeight = pdfHeight * 3;
+      }
+      
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgPDFHeight);
       
-      // Adiciona rodapé profissional
+      // Adicionar rodapé profissional em todas as páginas
       const totalPages = pdf.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
@@ -195,10 +238,11 @@ export default function UserStoryGenerator() {
         // Textos do rodapé
         pdf.text('Sinapsys Tecnologia - Soluções em Desenvolvimento', pdfWidth / 2, pdfHeight - 10, { align: 'center' });
         pdf.text(`Página ${i} de ${totalPages}`, pdfWidth - 15, pdfHeight - 10, { align: 'right' });
-        pdf.text(`Documento confidencial - ${new Date().getFullYear()}`, 15, pdfHeight - 10);
+        pdf.text(`Doc. ${new Date().getTime()}`, 15, pdfHeight - 10);
       }
       
-      pdf.save(`historia-usuario-${formData.projectTitle.replace(/\s+/g, '-').toLowerCase()}-sinapsys.pdf`);
+      const fileName = `historia-usuario-${formData.projectTitle.replace(/\s+/g, '-').toLowerCase()}-sinapsys.pdf`;
+      pdf.save(fileName);
       
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
@@ -207,7 +251,12 @@ export default function UserStoryGenerator() {
   };
 
   const downloadTXT = () => {
-    const blob = new Blob([generatedStory], { type: 'text/plain' });
+    if (!generatedStory) {
+      alert('Gere uma história primeiro antes de baixar o TXT.');
+      return;
+    }
+
+    const blob = new Blob([generatedStory], { type: 'text/plain; charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -316,8 +365,11 @@ export default function UserStoryGenerator() {
                 padding: '12px',
                 border: `2px solid ${colors.bege}`,
                 borderRadius: '8px',
-                fontSize: '16px'
+                fontSize: '16px',
+                transition: 'all 0.3s ease'
               }}
+              onFocus={(e) => e.target.style.borderColor = colors.azulClaro}
+              onBlur={(e) => e.target.style.borderColor = colors.bege}
             />
           </div>
 
@@ -341,8 +393,11 @@ export default function UserStoryGenerator() {
                 padding: '12px',
                 border: `2px solid ${colors.bege}`,
                 borderRadius: '8px',
-                fontSize: '16px'
+                fontSize: '16px',
+                transition: 'all 0.3s ease'
               }}
+              onFocus={(e) => e.target.style.borderColor = colors.azulClaro}
+              onBlur={(e) => e.target.style.borderColor = colors.bege}
             />
           </div>
 
@@ -367,8 +422,12 @@ export default function UserStoryGenerator() {
                 border: `2px solid ${colors.bege}`,
                 borderRadius: '8px',
                 fontSize: '16px',
-                resize: 'vertical'
+                resize: 'vertical',
+                transition: 'all 0.3s ease',
+                fontFamily: 'Arial, sans-serif'
               }}
+              onFocus={(e) => e.target.style.borderColor = colors.azulClaro}
+              onBlur={(e) => e.target.style.borderColor = colors.bege}
             />
             <small style={{ color: colors.azulEscuro, opacity: 0.7 }}>
               {formData.description.length} caracteres {formData.description.length < 20 ? '(mínimo: 20)' : '✓'}
@@ -381,7 +440,8 @@ export default function UserStoryGenerator() {
               color: '#DC2626',
               padding: '12px',
               borderRadius: '8px',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              border: '1px solid #FECACA'
             }}>
               ⚠️ {error}
             </div>
@@ -392,7 +452,7 @@ export default function UserStoryGenerator() {
             disabled={loading}
             style={{
               width: '100%',
-              background: loading ? colors.bege : colors.azulEscuro,
+              background: loading ? colors.bege : `linear-gradient(135deg, ${colors.azulEscuro} 0%, ${colors.azulClaro} 100%)`,
               color: colors.branco,
               padding: '15px',
               border: 'none',
@@ -400,12 +460,23 @@ export default function UserStoryGenerator() {
               fontSize: '16px',
               fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              boxShadow: loading ? 'none' : '0 4px 15px rgba(33, 184, 213, 0.3)'
             }}
-            onMouseOver={(e) => !loading && (e.target.style.background = colors.azulClaro)}
-            onMouseOut={(e) => !loading && (e.target.style.background = colors.azulEscuro)}
+            onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
+            onMouseOut={(e) => !loading && (e.target.style.transform = 'translateY(0)')}
           >
-            {loading ? '⏳ Gerando...' : '✨ Gerar História de Usuário'}
+            {loading ? (
+              <>
+                <span style={{marginRight: '10px'}}>⏳</span>
+                Gerando História...
+              </>
+            ) : (
+              <>
+                <span style={{marginRight: '10px'}}>✨</span>
+                Gerar História de Usuário
+              </>
+            )}
           </button>
         </div>
 
@@ -445,7 +516,10 @@ export default function UserStoryGenerator() {
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: 'bold',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
                   }}
                   onMouseOver={(e) => e.target.style.background = colors.azulClaro}
                   onMouseOut={(e) => e.target.style.background = colors.azulEscuro}
@@ -463,7 +537,10 @@ export default function UserStoryGenerator() {
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: 'bold',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
                   }}
                   onMouseOver={(e) => e.target.style.background = colors.bege}
                   onMouseOut={(e) => e.target.style.background = colors.areia}
@@ -481,7 +558,10 @@ export default function UserStoryGenerator() {
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: 'bold',
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
                   }}
                   onMouseOver={(e) => e.target.style.background = colors.azulEscuro}
                   onMouseOut={(e) => e.target.style.background = colors.azulClaro}
@@ -503,10 +583,7 @@ export default function UserStoryGenerator() {
               maxHeight: '500px',
               overflowY: 'auto',
               border: `1px solid ${colors.bege}`,
-              fontFamily: 'Arial, sans-serif',
-              fontSize: '14px',
-              lineHeight: '1.5',
-              color: colors.azulEscuro
+              fontFamily: 'Arial, sans-serif'
             }}
           >
             {!generatedStory && !loading && (
@@ -527,7 +604,8 @@ export default function UserStoryGenerator() {
                 <p style={{
                   fontSize: '1.1rem',
                   margin: '0',
-                  lineHeight: '1.6'
+                  lineHeight: '1.6',
+                  textAlign: 'center'
                 }}>
                   Preencha o formulário ao lado e clique em 
                   <strong style={{color: colors.azulClaro}}> "Gerar História de Usuário" </strong>
@@ -568,7 +646,7 @@ export default function UserStoryGenerator() {
                   fontSize: '0.9rem',
                   margin: 0
                 }}>
-                  Processando com IA...
+                  Processando sua descrição...
                 </p>
               </div>
             )}
@@ -577,7 +655,7 @@ export default function UserStoryGenerator() {
               <pre style={{ 
                 whiteSpace: 'pre-wrap',
                 fontFamily: 'Arial, sans-serif',
-                fontSize: '13px',
+                fontSize: '14px',
                 lineHeight: '1.5',
                 color: colors.azulEscuro,
                 margin: 0,
@@ -608,13 +686,13 @@ export default function UserStoryGenerator() {
           opacity: 0.9
         }}>
           💡 <strong>Dica Profissional:</strong> Quanto mais detalhada e específica for a descrição, 
-          mais precisa e útil será a história de usuário gerada pela IA
+          mais precisa e útil será a história de usuário gerada
         </p>
         <div style={{
           marginTop: '15px',
-          padding: '10px',
+          padding: '10px 20px',
           background: 'rgba(255, 255, 255, 0.2)',
-          borderRadius: '8px',
+          borderRadius: '25px',
           display: 'inline-block'
         }}>
           <span style={{
