@@ -6,7 +6,6 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Inicializar Groq apenas se a API key estiver configurada
 let groq;
 if (process.env.GROQ_API_KEY) {
   groq = new Groq({
@@ -14,11 +13,9 @@ if (process.env.GROQ_API_KEY) {
   });
 }
 
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -28,7 +25,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Rota principal da API
 app.post('/api/generate-story', async (req, res) => {
   try {
     const { projectTitle, clientName, description } = req.body;
@@ -44,7 +40,6 @@ app.post('/api/generate-story', async (req, res) => {
       });
     }
 
-    // Se Groq n√£o estiver configurado, usar simula√ß√£o
     if (!groq) {
       const simulatedStory = `
 # ${projectTitle}
@@ -93,7 +88,6 @@ app.post('/api/generate-story', async (req, res) => {
       });
     }
 
-    // USANDO GROQ API REAL
     const systemPrompt = `Voc√™ √© um especialista em engenharia de software e metodologias √°geis. 
 Sua tarefa √© criar hist√≥rias de usu√°rio PROFISSIONAIS seguindo os crit√©rios INVEST:
 
@@ -183,13 +177,10 @@ ENTREGUE:
   }
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log('Ì∫Ä BACKEND INICIADO!');
+// CORRE√á√ÉO: Usar 0.0.0.0 para o Render
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('Ì∫Ä BACKEND INICIADO NO RENDER!');
   console.log(`Ì≥ç Porta: ${PORT}`);
-  console.log(`Ìºê Health: http://localhost:${PORT}/api/health`);
-  console.log(`Ì¥ñ Groq API: ${process.env.GROQ_API_KEY ? '‚úÖ CONFIGURADA' : '‚ùå N√ÉO CONFIGURADA (modo simula√ß√£o)'}`);
-  if (!process.env.GROQ_API_KEY) {
-    console.log('Ì≤° Dica: Configure GROQ_API_KEY no arquivo .env para usar IA real');
-  }
+  console.log(`Ìºê URL: http://0.0.0.0:${PORT}`);
+  console.log(`Ì¥ñ Groq API: ${process.env.GROQ_API_KEY ? '‚úÖ CONFIGURADA' : '‚ùå N√ÉO CONFIGURADA'}`);
 });

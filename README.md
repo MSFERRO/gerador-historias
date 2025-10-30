@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ��� Gerador de Histórias de Usuário com IA
 
 Sistema completo para gerar histórias de usuário profissionais a partir de requisitos do cliente usando IA (Groq).
@@ -166,3 +167,7 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 - Comunidade Open Source
 
 ---
+=======
+# user-story-generator
+Gerador de Histórias de Usuário com IA usando Groq API
+>>>>>>> 9359b5f885c56b53a93e6b47346911a738e03d52
