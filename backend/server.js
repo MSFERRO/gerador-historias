@@ -11,7 +11,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-// 🔥 CONFIGURAÇÃO CORS COMPLETA
+// CONFIGURAÇÃO CORS COMPLETA
 app.use(cors({
   origin: [
     'https://gerador-historias-frontend.onrender.com',
@@ -65,7 +65,7 @@ app.post('/api/generate-story', async (req, res) => {
       });
     }
 
-    console.log(`📝 Gerando história para: ${projectTitle} - ${clientName}`);
+    console.log(`Gerando história para: ${projectTitle} - ${clientName}`);
 
     let story;
     let tokensUsed = 0;
@@ -77,28 +77,64 @@ app.post('/api/generate-story', async (req, res) => {
         messages: [
           {
             role: "system",
-            content: `Você é um especialista em Agile, Scrum e Product Management. 
-            Gere histórias de usuário PROFISSIONAIS e DETALHADAS no formato padrão.
-            Use markdown para formatação.
-            Inclua sempre:
-            - Título claro
-            - Descrição da história no formato "Como [persona], eu quero [ação], para [benefício]"
-            - Critérios de aceitação detalhados (mínimo 3)
-            - Prioridade (ALTA, MÉDIA, BAIXA)
-            - Estimativa em pontos de story
-            - Informações técnicas quando relevante
+            content: `Você é um analista de negócios senior especializado em documentação ágil.
+            Gere histórias de usuário PROFISSIONAIS, FORMAL e BEM ESTRUTURADAS.
             
-            Seja específico, prático e profissional.`
+            FORMATO OBRIGATÓRIO (sem emojis, sem markdown, texto puro):
+            
+            HISTÓRIA DE USUÁRIO - [PROJETO]
+            =================================
+            
+            INFORMAÇÕES GERAIS
+            -----------------
+            Projeto: [Nome do Projeto]
+            ID: US-[número]
+            Cliente: [Nome do Cliente] 
+            Data: [data]
+            Status: Pendente
+            Prioridade: Alta
+            Estimativa: 8 pontos
+            
+            DESCRIÇÃO
+            ---------
+            Como: [perfil do usuário]
+            Preciso: [funcionalidade desejada]
+            Para: [benefício/objetivo]
+            
+            CRITÉRIOS DE ACEITAÇÃO
+            ---------------------
+            1. [critério técnico específico]
+            2. [critério de negócio]
+            3. [critério de usabilidade]
+            
+            INFORMAÇÕES TÉCNICAS
+            -------------------
+            - Frontend: React
+            - Backend: Node.js
+            - Banco de Dados: A definir
+            - API: REST
+            
+            OBSERVAÇÕES
+            -----------
+            [detalhes adicionais relevantes]
+            
+            RESPONSÁVEIS
+            ------------
+            Product Owner: [cliente]
+            Time: Sinapsys Tecnologia
+            
+            ---
+            Documento gerado por Sinapsys Tecnologia
+            [data completa]`
           },
           {
             role: "user",
-            content: `Gere uma história de usuário completa e profissional para:
+            content: `Gere uma história de usuário profissional para:
+            Projeto: ${projectTitle}
+            Cliente: ${clientName}
+            Requisitos: ${description}
             
-            PROJETO: ${projectTitle}
-            CLIENTE: ${clientName}
-            REQUISITOS: ${description}
-            
-            Gere uma história bem estruturada e útil para o time de desenvolvimento.`
+            Use formato formal sem emojis.`
           }
         ],
         model: "mixtral-8x7b-32768",
@@ -110,10 +146,10 @@ app.post('/api/generate-story', async (req, res) => {
       story = completion.choices[0]?.message?.content;
       tokensUsed = completion.usage?.total_tokens || 0;
       
-      console.log(`✅ História gerada com Groq AI. Tokens: ${tokensUsed}`);
+      console.log(`História gerada com Groq AI. Tokens: ${tokensUsed}`);
       
     } catch (groqError) {
-      console.error('❌ Erro no Groq:', groqError.message);
+      console.error('Erro no Groq:', groqError.message);
       // Fallback para modo simulação se Groq falhar
       story = generateFallbackStory(projectTitle, clientName, description);
       mode = 'simulação (fallback)';
@@ -134,71 +170,77 @@ app.post('/api/generate-story', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro no servidor:', error);
+    console.error('Erro no servidor:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      message: error.message
     });
   }
 });
 
-// Função de fallback para gerar histórias simuladas (apenas se Groq falhar)
+// FUNÇÃO DE FALLBACK PROFISSIONAL SEM EMOJIS
 function generateFallbackStory(projectTitle, clientName, description) {
+  const currentDate = new Date().toLocaleDateString('pt-BR');
+  const fullDateTime = new Date().toLocaleString('pt-BR');
+  const storyId = `US-${Date.now().toString().slice(-6)}`;
+  
   return `
-# ${projectTitle}
-**Cliente:** ${clientName}
-**Data:** ${new Date().toLocaleDateString('pt-BR')}
-**Status:** 📋 Pendente
+HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}
+==================================================
 
----
+INFORMAÇÕES GERAIS
+------------------
+Projeto: ${projectTitle}
+ID: ${storyId}
+Cliente: ${clientName}
+Data: ${currentDate}
+Status: Pendente
+Prioridade: Alta
+Estimativa: 8 pontos
 
-## 📋 HISTÓRIA DE USUÁRIO
+DESCRIÇÃO
+---------
+Como: ${clientName}
+Preciso: ${description.split(' ').slice(0, 15).join(' ')}
+Para: ${description.split(' ').slice(15, 30).join(' ') || 'otimizar processos e melhorar eficiência operacional'}
 
-**Como** ${clientName}
-**Eu quero** ${description.split(' ').slice(0, 15).join(' ')}
-**Para** ${description.split(' ').slice(15, 25).join(' ') || 'melhorar a eficiência do processo'}
+CRITÉRIOS DE ACEITAÇÃO
+----------------------
+1. O sistema deve permitir ${description.split(' ').slice(0, 10).join(' ')} de forma intuitiva
+2. A interface deve ser responsiva e compatível com dispositivos móveis
+3. Os dados devem ser armazenados com segurança e backup automático
+4. Deve gerar relatórios de operação em tempo real
+5. O tempo de resposta deve ser inferior a 3 segundos para ações críticas
 
----
+INFORMAÇÕES TÉCNICAS
+--------------------
+- Arquitetura: Frontend React com Backend Node.js
+- Banco de Dados: MongoDB/PostgreSQL
+- API: RESTful JSON
+- Autenticação: JWT
+- Hospedagem: Cloud
 
-## ✅ CRITÉRIOS DE ACEITAÇÃO
-
-- [ ] **Dado que** estou logado no sistema
-- [ ] **Quando** acesso a funcionalidade  
-- [ ] **Então** devo conseguir realizar a ação principal
-
-- [ ] **Dado que** os dados estão corretos
-- [ ] **Quando** submeto o formulário
-- [ ] **Então** o sistema deve processar com sucesso
-
-- [ ] **Dado que** ocorre um erro
-- [ ] **Quando** o sistema identifica o problema
-- [ ] **Então** deve exibir mensagem clara ao usuário
-
----
-
-## 🎯 PRIORIDADE
-
-**ALTA** - Funcionalidade essencial para o negócio
-
----
-
-## 📊 INFORMAÇÕES TÉCNICAS
-
-**Estimativa:** 5 pontos
-**Sprint:** Backlog
-**Responsável:** Time de Desenvolvimento
-**Tipo:** Funcionalidade
-
----
-
-## 💡 NOTAS ADICIONAIS
-
+DETALHES DO REQUISITO
+---------------------
 ${description}
 
----
+OBSERVAÇÕES
+-----------
+- O projeto segue metodologia ágil Scrum
+- Entregas incrementais a cada 2 semanas
+- Revisões periódicas com o cliente
+- Ambiente de homologação disponível para testes
 
-*História gerada automaticamente por Sinapsys Tecnologia - Modo Simulação (Groq indisponível)*
+RESPONSÁVEIS
+------------
+Product Owner: ${clientName}
+Scrum Master: [A definir]
+Time de Desenvolvimento: Sinapsys Tecnologia
+Data de Revisão: ${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+
+---
+Documento gerado por Sinapsys Tecnologia
+${fullDateTime}
   `.trim();
 }
 
@@ -206,7 +248,7 @@ ${description}
 app.get('/api/test-groq', async (req, res) => {
   try {
     const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: "Diga apenas 'Groq conectado com sucesso!'" }],
+      messages: [{ role: "user", content: "Responda apenas: Conexão Groq estabelecida com sucesso" }],
       model: "mixtral-8x7b-32768",
       max_tokens: 20
     });
@@ -235,14 +277,13 @@ app.get('*', (req, res) => {
       health: 'GET /api/health',
       generate: 'POST /api/generate-story',
       testGroq: 'GET /api/test-groq'
-    },
-    groq: 'Configurado e ativo'
+    }
   });
 });
 
 // Manipulador de erros global
 app.use((error, req, res, next) => {
-  console.error('💥 Erro global:', error);
+  console.error('Erro global:', error);
   res.status(500).json({
     error: 'Erro interno do servidor',
     message: 'Algo deu errado. Tente novamente.'
@@ -251,12 +292,10 @@ app.use((error, req, res, next) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log('🚀 BACKEND INICIADO COM GROQ AI!');
-  console.log(`📍 Porta: ${PORT}`);
-  console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health: http://localhost:${PORT}/api/health`);
-  console.log(`🤖 Groq: ✅ CONFIGURADO E ATIVO`);
-  console.log(`🌍 CORS: ✅ Habilitado para produção`);
-  console.log(`🎯 Frontend: https://gerador-historias-frontend.onrender.com`);
-  console.log(`💡 Teste Groq: http://localhost:${PORT}/api/test-groq`);
+  console.log('BACKEND INICIADO COM GROQ AI!');
+  console.log(`Porta: ${PORT}`);
+  console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Health: http://localhost:${PORT}/api/health`);
+  console.log(`Groq: ${process.env.GROQ_API_KEY ? 'CONFIGURADO' : 'NAO CONFIGURADO'}`);
+  console.log(`Frontend: https://gerador-historias-frontend.onrender.com`);
 });
