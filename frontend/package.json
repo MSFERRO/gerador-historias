@@ -8,6 +8,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "proxy": "https://gerador-historias-backend.onrender.com",
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -17,6 +18,9 @@
     "jspdf": "^3.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "react-scripts": "^5.0.1"
   },
   "browserslist": {
     "production": [
@@ -29,8 +33,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "react-scripts": "^5.0.1"
   }
 }

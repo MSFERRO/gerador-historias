@@ -48,7 +48,7 @@ export default function UserStoryGenerator() {
     setGeneratedStory('');
 
     try {
-      const API_URL = 'https://gerador-historias-backend.onrender.com';
+      const API_URL = process.env.NODE_ENV === 'development' ? '' : 'https://gerador-historias-backend.onrender.com';
 
       const response = await fetch(`${API_URL}/api/generate-story`, {
         method: 'POST',
