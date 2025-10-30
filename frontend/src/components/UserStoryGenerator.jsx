@@ -84,7 +84,88 @@ export default function UserStoryGenerator() {
       const canvas = await html2canvas(storyRef.current, {
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        backgroundColor: '#FFFFFF',
+        onclone: function(clonedDoc) {
+          // Adiciona cabeçalho profissional ao conteúdo clonado
+          const storyElement = clonedDoc.querySelector('[ref="storyRef"]');
+          if (storyElement) {
+            // Cria container do cabeçalho
+            const headerDiv = clonedDoc.createElement('div');
+            headerDiv.style.cssText = `
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              background: #003F51;
+              color: white;
+              padding: 12px 20px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              box-sizing: border-box;
+              z-index: 1000;
+              border-bottom: 2px solid #21B8D5;
+            `;
+            
+            // Texto do cabeçalho
+            const headerText = clonedDoc.createElement('div');
+            headerText.style.cssText = `
+              font-family: Arial, sans-serif;
+              font-size: 16px;
+              font-weight: bold;
+              line-height: 1.2;
+            `;
+            headerText.innerHTML = 'SINAPSYS TECNOLOGIA<br><span style="font-size: 10px; font-weight: normal;">Gerador de Histórias de Usuário</span>';
+            
+            // Logo (substitua pela URL do seu logo quando tiver)
+            const logoImg = clonedDoc.createElement('div');
+            logoImg.style.cssText = `
+              width: 120px;
+              height: 30px;
+              background: #21B8D5;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+              font-weight: bold;
+              border-radius: 4px;
+            `;
+            logoImg.innerHTML = 'LOGO SINAPSYS';
+            
+            headerDiv.appendChild(headerText);
+            headerDiv.appendChild(logoImg);
+            
+            // Ajusta o padding do conteúdo para o cabeçalho
+            storyElement.style.paddingTop = '70px';
+            storyElement.style.position = 'relative';
+            storyElement.style.minHeight = 'calc(400px + 70px)';
+            storyElement.insertBefore(headerDiv, storyElement.firstChild);
+
+            // Adiciona informações do projeto no conteúdo
+            const projectInfo = clonedDoc.createElement('div');
+            projectInfo.style.cssText = `
+              margin-bottom: 20px;
+              padding: 15px;
+              background: #F8FAFC;
+              border-left: 4px solid #003F51;
+              font-family: Arial, sans-serif;
+            `;
+            projectInfo.innerHTML = `
+              <div style="font-size: 12px; color: #666; margin-bottom: 5px;">INFORMAÇÕES DO PROJETO</div>
+              <div style="font-size: 14px; font-weight: bold; color: #003F51;">${formData.projectTitle}</div>
+              <div style="font-size: 12px; color: #666;">Cliente: ${formData.clientName}</div>
+              <div style="font-size: 10px; color: #999;">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
+            `;
+
+            // Insere as informações do projeto após o cabeçalho
+            const content = storyElement.querySelector('pre') || storyElement;
+            if (content) {
+              storyElement.insertBefore(projectInfo, content);
+            }
+          }
+        }
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -97,9 +178,30 @@ export default function UserStoryGenerator() {
       const ratio = imgHeight / imgWidth;
       const imgPDFHeight = pdfWidth * ratio;
       
+      // Adiciona a imagem ao PDF
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgPDFHeight);
-      pdf.save(`historia-usuario-${formData.projectTitle.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+      
+      // Adiciona rodapé profissional
+      const totalPages = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(100);
+        
+        // Linha do rodapé
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(10, pdfHeight - 15, pdfWidth - 10, pdfHeight - 15);
+        
+        // Textos do rodapé
+        pdf.text('Sinapsys Tecnologia - Soluções em Desenvolvimento', pdfWidth / 2, pdfHeight - 10, { align: 'center' });
+        pdf.text(`Página ${i} de ${totalPages}`, pdfWidth - 15, pdfHeight - 10, { align: 'right' });
+        pdf.text(`Documento confidencial - ${new Date().getFullYear()}`, 15, pdfHeight - 10);
+      }
+      
+      pdf.save(`historia-usuario-${formData.projectTitle.replace(/\s+/g, '-').toLowerCase()}-sinapsys.pdf`);
+      
     } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
       alert('Erro ao gerar PDF. Tente novamente.');
     }
   };
@@ -257,7 +359,7 @@ export default function UserStoryGenerator() {
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder="Descreva o que o cliente precisa..."
+              placeholder="Descreva detalhadamente o que o cliente precisa, funcionalidades desejadas, objetivos do projeto..."
               rows="6"
               style={{
                 width: '100%',
@@ -297,8 +399,11 @@ export default function UserStoryGenerator() {
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease'
             }}
+            onMouseOver={(e) => !loading && (e.target.style.background = colors.azulClaro)}
+            onMouseOut={(e) => !loading && (e.target.style.background = colors.azulEscuro)}
           >
             {loading ? '⏳ Gerando...' : '✨ Gerar História de Usuário'}
           </button>
@@ -310,7 +415,9 @@ export default function UserStoryGenerator() {
           padding: '30px',
           borderRadius: '15px',
           boxShadow: '0 8px 32px rgba(0, 63, 81, 0.1)',
-          border: `2px solid ${colors.areia}`
+          border: `2px solid ${colors.areia}`,
+          display: 'flex',
+          flexDirection: 'column'
         }}>
           <div style={{
             display: 'flex',
@@ -336,8 +443,12 @@ export default function UserStoryGenerator() {
                     border: 'none',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease'
                   }}
+                  onMouseOver={(e) => e.target.style.background = colors.azulClaro}
+                  onMouseOut={(e) => e.target.style.background = colors.azulEscuro}
                 >
                   📋 Copiar
                 </button>
@@ -350,8 +461,12 @@ export default function UserStoryGenerator() {
                     border: `1px solid ${colors.bege}`,
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease'
                   }}
+                  onMouseOver={(e) => e.target.style.background = colors.bege}
+                  onMouseOut={(e) => e.target.style.background = colors.areia}
                 >
                   📄 TXT
                 </button>
@@ -364,8 +479,12 @@ export default function UserStoryGenerator() {
                     border: 'none',
                     borderRadius: '6px',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease'
                   }}
+                  onMouseOver={(e) => e.target.style.background = colors.azulEscuro}
+                  onMouseOut={(e) => e.target.style.background = colors.azulClaro}
                 >
                   📊 PDF
                 </button>
@@ -379,10 +498,15 @@ export default function UserStoryGenerator() {
               background: colors.cinzaClaro,
               padding: '20px',
               borderRadius: '8px',
+              flex: '1',
               minHeight: '400px',
               maxHeight: '500px',
               overflowY: 'auto',
-              border: `1px solid ${colors.bege}`
+              border: `1px solid ${colors.bege}`,
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '14px',
+              lineHeight: '1.5',
+              color: colors.azulEscuro
             }}
           >
             {!generatedStory && !loading && (
@@ -390,39 +514,76 @@ export default function UserStoryGenerator() {
                 textAlign: 'center',
                 color: colors.azulEscuro,
                 opacity: 0.6,
-                padding: '40px 20px'
+                padding: '60px 20px',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center'
               }}>
-                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📄</div>
-                <p>Preencha o formulário e clique em "Gerar" para criar sua história de usuário</p>
+                <div style={{ fontSize: '4rem', marginBottom: '20px', opacity: 0.5 }}>
+                  📄
+                </div>
+                <p style={{
+                  fontSize: '1.1rem',
+                  margin: '0',
+                  lineHeight: '1.6'
+                }}>
+                  Preencha o formulário ao lado e clique em 
+                  <strong style={{color: colors.azulClaro}}> "Gerar História de Usuário" </strong>
+                  para criar sua história profissional
+                </p>
               </div>
             )}
 
             {loading && (
               <div style={{
                 textAlign: 'center',
-                padding: '40px 20px'
+                padding: '60px 20px',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center'
               }}>
                 <div style={{
-                  width: '40px',
-                  height: '40px',
-                  border: `3px solid ${colors.areia}`,
-                  borderTop: `3px solid ${colors.azulClaro}`,
+                  width: '50px',
+                  height: '50px',
+                  border: `4px solid ${colors.areia}`,
+                  borderTop: `4px solid ${colors.azulClaro}`,
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite',
-                  margin: '0 auto 20px'
+                  marginBottom: '20px'
                 }} />
-                <p style={{ color: colors.azulEscuro }}>Gerando história de usuário...</p>
+                <p style={{
+                  color: colors.azulEscuro,
+                  fontSize: '1.1rem',
+                  margin: '0 0 10px 0'
+                }}>
+                  Gerando história de usuário...
+                </p>
+                <p style={{
+                  color: colors.azulEscuro,
+                  opacity: 0.7,
+                  fontSize: '0.9rem',
+                  margin: 0
+                }}>
+                  Processando com IA...
+                </p>
               </div>
             )}
 
             {generatedStory && (
               <pre style={{ 
                 whiteSpace: 'pre-wrap',
-                fontFamily: 'monospace',
-                fontSize: '14px',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '13px',
                 lineHeight: '1.5',
                 color: colors.azulEscuro,
-                margin: 0
+                margin: 0,
+                background: 'transparent',
+                border: 'none',
+                padding: 0
               }}>
                 {generatedStory}
               </pre>
@@ -434,18 +595,33 @@ export default function UserStoryGenerator() {
       {/* Footer */}
       <div style={{
         textAlign: 'center',
-        marginTop: '30px',
-        color: colors.branco
+        marginTop: '40px',
+        padding: '20px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: '15px',
+        backdropFilter: 'blur(10px)'
       }}>
-        <p>💡 Dica: Quanto mais detalhada a descrição, melhor será a história gerada</p>
+        <p style={{
+          color: colors.branco,
+          margin: '0',
+          fontSize: '1rem',
+          opacity: 0.9
+        }}>
+          💡 <strong>Dica Profissional:</strong> Quanto mais detalhada e específica for a descrição, 
+          mais precisa e útil será a história de usuário gerada pela IA
+        </p>
         <div style={{
-          marginTop: '10px',
-          padding: '8px 16px',
+          marginTop: '15px',
+          padding: '10px',
           background: 'rgba(255, 255, 255, 0.2)',
-          borderRadius: '20px',
+          borderRadius: '8px',
           display: 'inline-block'
         }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
+          <span style={{
+            color: colors.branco,
+            fontSize: '0.9rem',
+            fontWeight: 'bold'
+          }}>
             🧠 Desenvolvido por <span style={{color: colors.areia}}>Sinapsys Tecnologia</span>
           </span>
         </div>
