@@ -1,6 +1,4 @@
 import React, { useState, useRef } from 'react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 export default function UserStoryGenerator() {
   const [formData, setFormData] = useState({
@@ -11,7 +9,6 @@ export default function UserStoryGenerator() {
   const [generatedStory, setGeneratedStory] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const storyRef = useRef();
 
   // Cores Sinapsys Tecnologia
   const colors = {
@@ -48,8 +45,10 @@ export default function UserStoryGenerator() {
     setGeneratedStory('');
 
     try {
-      const API_URL = 'https://gerador-historias-backend.onrender.com';
-      
+      const API_URL = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3001' 
+        : 'https://gerador-historias-backend.onrender.com';
+
       const response = await fetch(`${API_URL}/api/generate-story`, {
         method: 'POST',
         headers: {
@@ -77,179 +76,6 @@ export default function UserStoryGenerator() {
     alert('História copiada para a área de transferência!');
   };
 
-  const downloadPDF = async () => {
-    if (!storyRef.current || !generatedStory) {
-      alert('Gere uma história primeiro antes de baixar o PDF.');
-      return;
-    }
-
-    try {
-      // Criar elemento temporário para o PDF
-      const tempDiv = document.createElement('div');
-      tempDiv.style.cssText = `
-        position: fixed;
-        left: -10000px;
-        top: -10000px;
-        width: 800px;
-        background: white;
-        padding: 40px;
-        font-family: Arial, sans-serif;
-        color: #003F51;
-        line-height: 1.6;
-      `;
-
-      // Cabeçalho profissional
-      const header = `
-        <div style="
-          border-bottom: 3px solid #21B8D5;
-          padding-bottom: 15px;
-          margin-bottom: 25px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        ">
-          <div>
-            <h1 style="color: #003F51; margin: 0; font-size: 24px; font-weight: bold;">
-              SINAPSYS TECNOLOGIA
-            </h1>
-            <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">
-              Gerador de Histórias de Usuário - Documento Profissional
-            </p>
-          </div>
-          <div style="
-            background: #003F51;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 12px;
-            font-weight: bold;
-            border: 2px solid #21B8D5;
-          ">
-            🧠 SINAPSYS
-          </div>
-        </div>
-      `;
-
-      // Informações do projeto
-      const projectInfo = `
-        <div style="
-          background: #F8FAFC;
-          border-left: 4px solid #003F51;
-          padding: 20px;
-          margin-bottom: 25px;
-          border-radius: 0 8px 8px 0;
-        ">
-          <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: bold;">
-            📋 INFORMAÇÕES DO PROJETO
-          </div>
-          <div style="font-size: 18px; font-weight: bold; color: #003F51; margin-bottom: 5px;">
-            ${formData.projectTitle || 'Não informado'}
-          </div>
-          <div style="font-size: 14px; color: #666; margin-bottom: 5px;">
-            <strong>Cliente:</strong> ${formData.clientName || 'Não informado'}
-          </div>
-          <div style="font-size: 12px; color: #999;">
-            <strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}
-          </div>
-        </div>
-      `;
-
-      // Processar o conteúdo da história para HTML
-      const processStoryForPDF = (story) => {
-        return story
-          .replace(/\n/g, '<br>')
-          .replace(/# (.*?)(?=\n|$)/g, '<h1 style="color: #003F51; border-bottom: 2px solid #21B8D5; padding-bottom: 8px; margin: 25px 0 15px 0; font-size: 20px;">$1</h1>')
-          .replace(/## (.*?)(?=\n|$)/g, '<h2 style="color: #003F51; background: #F7EDE5; padding: 10px 15px; border-radius: 5px; margin: 20px 0 15px 0; font-size: 16px;">$1</h2>')
-          .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #003F51;">$1</strong>')
-          .replace(/\-\-\-/g, '<hr style="border: 1px dashed #21B8D5; margin: 25px 0; opacity: 0.5;">')
-          .replace(/\- \[ \] (.*?)(?=\n|$)/g, '<div style="margin: 8px 0; padding-left: 20px;">◻️ $1</div>')
-          .replace(/\- \[x\] (.*?)(?=\n|$)/g, '<div style="margin: 8px 0; padding-left: 20px;">✅ <strong>$1</strong></div>')
-          .replace(/✅ (.*?)(?=\n|$)/g, '<div style="margin: 10px 0; padding: 8px 12px; background: #F0F9FF; border-left: 3px solid #21B8D5; border-radius: 0 5px 5px 0;">✅ $1</div>')
-          .replace(/📁 |🔍 |📊 |🔧 /g, '<span style="font-size: 16px; margin-right: 5px;">$&</span>');
-      };
-
-      const storyContent = processStoryForPDF(generatedStory);
-
-      tempDiv.innerHTML = header + projectInfo + `
-        <div style="font-size: 14px; color: #333;">
-          ${storyContent}
-        </div>
-        
-        <div style="
-          margin-top: 40px;
-          padding-top: 20px;
-          border-top: 2px solid #E0C4AD;
-          font-size: 11px;
-          color: #666;
-          text-align: center;
-          background: #F7EDE5;
-          padding: 15px;
-          border-radius: 5px;
-        ">
-          <strong>Documento confidencial - Sinapsys Tecnologia</strong><br>
-          © ${new Date().getFullYear()} - Todos os direitos reservados<br>
-          <em>Gerado automaticamente pelo Sistema de Gestão de Histórias de Usuário</em>
-        </div>
-      `;
-
-      document.body.appendChild(tempDiv);
-
-      const canvas = await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#FFFFFF',
-        width: 800,
-        height: tempDiv.scrollHeight,
-        windowWidth: 800,
-        windowHeight: tempDiv.scrollHeight
-      });
-
-      document.body.removeChild(tempDiv);
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = imgHeight / imgWidth;
-      let imgPDFHeight = pdfWidth * ratio;
-      
-      // Se a imagem for muito alta, ajusta para caber
-      if (imgPDFHeight > pdfHeight * 3) {
-        imgPDFHeight = pdfHeight * 3;
-      }
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgPDFHeight);
-      
-      // Adicionar rodapé profissional em todas as páginas
-      const totalPages = pdf.internal.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(8);
-        pdf.setTextColor(100);
-        
-        // Linha do rodapé
-        pdf.setDrawColor(200, 200, 200);
-        pdf.line(10, pdfHeight - 15, pdfWidth - 10, pdfHeight - 15);
-        
-        // Textos do rodapé
-        pdf.text('Sinapsys Tecnologia - Soluções em Desenvolvimento', pdfWidth / 2, pdfHeight - 10, { align: 'center' });
-        pdf.text(`Página ${i} de ${totalPages}`, pdfWidth - 15, pdfHeight - 10, { align: 'right' });
-        pdf.text(`Doc. ${new Date().getTime()}`, 15, pdfHeight - 10);
-      }
-      
-      const fileName = `historia-usuario-${formData.projectTitle.replace(/\s+/g, '-').toLowerCase()}-sinapsys.pdf`;
-      pdf.save(fileName);
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      alert('Erro ao gerar PDF. Tente novamente.');
-    }
-  };
-
   const downloadTXT = () => {
     if (!generatedStory) {
       alert('Gere uma história primeiro antes de baixar o TXT.');
@@ -265,6 +91,157 @@ export default function UserStoryGenerator() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadWord = () => {
+    if (!generatedStory) {
+      alert('Gere uma história primeiro antes de baixar o Word.');
+      return;
+    }
+
+    try {
+      // Extrair informações da história gerada
+      const getStoryPart = (startMarker, endMarker) => {
+        const startIndex = generatedStory.indexOf(startMarker);
+        if (startIndex === -1) return '';
+        const contentStart = startIndex + startMarker.length;
+        const endIndex = endMarker ? generatedStory.indexOf(endMarker, contentStart) : generatedStory.length;
+        return generatedStory.substring(contentStart, endIndex).trim();
+      };
+
+      // Criar conteúdo HTML para Word
+      const wordContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+              xmlns:w="urn:schemas-microsoft-com:office:word" 
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8">
+          <title>História de Usuário - ${formData.projectTitle}</title>
+          <style>
+            body { 
+              font-family: 'Arial', sans-serif; 
+              margin: 40px; 
+              line-height: 1.6;
+              color: #333;
+            }
+            h1 { 
+              color: #003F51; 
+              border-bottom: 2px solid #21B8D5; 
+              padding-bottom: 10px;
+              font-size: 24px;
+              margin-bottom: 20px;
+            }
+            h2 { 
+              color: #003F51; 
+              margin-top: 30px;
+              font-size: 18px;
+              border-left: 4px solid #21B8D5;
+              padding-left: 10px;
+            }
+            .header-info { 
+              background: #F8FAFC; 
+              padding: 20px; 
+              border-left: 4px solid #003F51; 
+              margin: 20px 0; 
+              border-radius: 4px;
+            }
+            .section { 
+              margin: 25px 0; 
+            }
+            .criteria-list { 
+              margin: 15px 0; 
+              padding-left: 20px;
+            }
+            .criteria-list li {
+              margin: 8px 0;
+            }
+            .footer { 
+              margin-top: 50px; 
+              text-align: center; 
+              color: #666; 
+              font-style: italic;
+              border-top: 1px solid #ddd;
+              padding-top: 20px;
+            }
+            .story-part {
+              background: #f9f9f9;
+              padding: 15px;
+              border-radius: 5px;
+              margin: 10px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>HISTÓRIA DE USUÁRIO - ${formData.projectTitle.toUpperCase()}</h1>
+          
+          <div class="header-info">
+            <strong>Cliente:</strong> ${formData.clientName}<br>
+            <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
+            <strong>Status:</strong> Em Desenvolvimento
+          </div>
+
+          <div class="section">
+            <h2>HISTÓRIA DE USUÁRIO</h2>
+            <div class="story-part">
+              <strong>COMO:</strong> ${getStoryPart('COMO:', 'QUERO:') || 'analista'}<br><br>
+              <strong>QUERO:</strong> ${getStoryPart('QUERO:', 'PARA:') || 'automatizar processos'}<br><br>
+              <strong>PARA:</strong> ${getStoryPart('PARA:', '================================================================================') || 'melhorar eficiência'}
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>DESCRIÇÃO DETALHADA</h2>
+            <div class="story-part">
+              ${formData.description.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>CRITÉRIOS DE ACEITAÇÃO</h2>
+            <ul class="criteria-list">
+              ${getStoryPart('CRITÉRIOS DE ACEITAÇÃO', '================================================================================')
+                .split('\n')
+                .filter(line => line.trim() && line.includes('-'))
+                .map(line => `<li>${line.replace('-', '').trim()}</li>`)
+                .join('') || '<li>Funcionalidade implementada conforme especificado</li><li>Interface intuitiva e responsiva</li><li>Processamento robusto e seguro</li>'
+              }
+            </ul>
+          </div>
+
+          <div class="section">
+            <h2>REQUISITOS TÉCNICOS</h2>
+            <ul class="criteria-list">
+              <li>Backend Node.js/Express</li>
+              <li>Processamento de documentos inteligente</li>
+              <li>Interface React responsiva</li>
+              <li>API RESTful</li>
+              <li>Armazenamento seguro de dados</li>
+              <li>Validação e tratamento de erros</li>
+            </ul>
+          </div>
+
+          <div class="footer">
+            Documento gerado automaticamente em ${new Date().toLocaleString('pt-BR')}
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Criar blob e download
+      const blob = new Blob([wordContent], { 
+        type: 'application/msword' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historia-usuario-${formData.projectTitle.replace(/\s+/g, '-').toLowerCase()}.doc`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Erro ao gerar Word:', error);
+      alert('Erro ao gerar documento Word. Tente novamente.');
+    }
+  };
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -272,7 +249,7 @@ export default function UserStoryGenerator() {
       padding: '20px',
       fontFamily: 'Arial, sans-serif'
     }}>
-      {/* Header Sinapsys */}
+      {/* Header Sinapsys - SEM "Desenvolvido por" */}
       <div style={{
         background: colors.branco,
         padding: '20px',
@@ -305,20 +282,7 @@ export default function UserStoryGenerator() {
               Transforme requisitos em histórias de usuário profissionais
             </p>
           </div>
-          <div style={{
-            background: colors.areia,
-            padding: '10px 20px',
-            borderRadius: '25px',
-            border: `2px solid ${colors.bege}`
-          }}>
-            <span style={{
-              color: colors.azulEscuro,
-              fontWeight: 'bold',
-              fontSize: '0.9rem'
-            }}>
-              Desenvolvido por <span style={{color: colors.azulClaro}}>Sinapsys Tecnologia</span>
-            </span>
-          </div>
+          {/* REMOVIDO: "Desenvolvido por Sinapsys Tecnologia" do header */}
         </div>
       </div>
 
@@ -529,27 +493,6 @@ export default function UserStoryGenerator() {
                 <button
                   onClick={downloadTXT}
                   style={{
-                    background: colors.areia,
-                    color: colors.azulEscuro,
-                    padding: '8px 12px',
-                    border: `1px solid ${colors.bege}`,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    transition: 'all 0.3s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                  onMouseOver={(e) => e.target.style.background = colors.bege}
-                  onMouseOut={(e) => e.target.style.background = colors.areia}
-                >
-                  📄 TXT
-                </button>
-                <button
-                  onClick={downloadPDF}
-                  style={{
                     background: colors.azulClaro,
                     color: colors.branco,
                     padding: '8px 12px',
@@ -566,26 +509,44 @@ export default function UserStoryGenerator() {
                   onMouseOver={(e) => e.target.style.background = colors.azulEscuro}
                   onMouseOut={(e) => e.target.style.background = colors.azulClaro}
                 >
-                  📊 PDF
+                  📄 TXT
+                </button>
+                <button
+                  onClick={downloadWord}
+                  style={{
+                    background: colors.areia,
+                    color: colors.azulEscuro,
+                    padding: '8px 12px',
+                    border: `1px solid ${colors.bege}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  onMouseOver={(e) => e.target.style.background = colors.bege}
+                  onMouseOut={(e) => e.target.style.background = colors.areia}
+                >
+                  📝 Word
                 </button>
               </div>
             )}
           </div>
 
-          <div 
-            ref={storyRef}
-            style={{ 
-              background: colors.cinzaClaro,
-              padding: '20px',
-              borderRadius: '8px',
-              flex: '1',
-              minHeight: '400px',
-              maxHeight: '500px',
-              overflowY: 'auto',
-              border: `1px solid ${colors.bege}`,
-              fontFamily: 'Arial, sans-serif'
-            }}
-          >
+          <div style={{ 
+            background: colors.cinzaClaro,
+            padding: '20px',
+            borderRadius: '8px',
+            flex: '1',
+            minHeight: '400px',
+            maxHeight: '500px',
+            overflowY: 'auto',
+            border: `1px solid ${colors.bege}`,
+            fontFamily: 'Arial, sans-serif'
+          }}>
             {!generatedStory && !loading && (
               <div style={{
                 textAlign: 'center',
@@ -670,7 +631,7 @@ export default function UserStoryGenerator() {
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer - MANTIDO "Desenvolvido por Sinapsys Tecnologia" apenas aqui */}
       <div style={{
         textAlign: 'center',
         marginTop: '40px',
