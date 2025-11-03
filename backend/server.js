@@ -1,11 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const { OpenAI } = require('openai');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000;
 
 // Middlewares
 app.use(cors());
@@ -208,7 +207,7 @@ Documento gerado pela aplicação - Sinapsys Tecnologia
 ${new Date().toLocaleString('pt-BR')}`;
 }
 
-// ✅ ROTAS
+// ✅ ROTAS DA API
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK',
@@ -304,20 +303,28 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
-// ✅ SERVE FRONTEND - CORREÇÃO: SEM app.get('*')
-app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-// ✅ ROTA PARA QUALQUER OUTRA REQUISIÇÃO - CORREÇÃO
-app.use((req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+// ✅ ROTA RAIZ - APENAS INFO DA API
+app.get('/', (req, res) => {
+    res.json({
+        message: '🚀 SINAPSYS BACKEND API - ONLINE',
+        version: '1.0',
+        endpoints: {
+            health: '/api/health',
+            testAI: '/api/test-ai',
+            generateStory: '/api/generate-story (POST)'
+        },
+        aiStatus: aiStatus,
+        timestamp: new Date().toISOString()
+    });
 });
 
 // ✅ INICIAR SERVIDOR
 app.listen(PORT, () => {
     console.log('\n========================================');
-    console.log('🚀 SINAPSYS BACKEND - ONLINE');
+    console.log('🚀 SINAPSYS BACKEND API - ONLINE');
     console.log(`📍 Porta: ${PORT}`);
     console.log(`🌐 Ambiente: ${process.env.NODE_ENV}`);
     console.log(`🤖 AI Status: ${aiStatus}`);
+    console.log(`🔗 URL: https://gerador-historias-backend.onrender.com`);
     console.log('========================================\n');
 });
