@@ -54,12 +54,13 @@ function App() {
     alert('História copiada para a área de transferência!');
   };
 
+  // ✅ FUNÇÃO DOWNLOAD WORD - LOGO DA PASTA PUBLIC
   const downloadWord = () => {
     const projectTitle = formData.projectTitle || 'documento';
     const clientName = formData.clientName || 'Não informado';
     
-    // Base64 da logo Sinapsys (SVG)
-    const logoBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTUwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMDA0RjlGIi8+Cjx0ZXh0IHg9Ijc1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U0lOQVBTWVM8L3RleHQ+Cjx0ZXh0IHg9Ijc1IiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVjbm9sb2dpYTwvdGV4dD4KPC9zdmc+';
+    // URL da logo na pasta public do servidor
+    const logoUrl = 'https://gerador-historias-backend.onrender.com/logo-sinapsys2.png';
 
     const wordContent = `<!DOCTYPE html>
 <html>
@@ -69,9 +70,9 @@ function App() {
     <style>
         body, html {
             margin: 0;
-            padding: 0;
-            font-family: "Arial", sans-serif !important;
-            line-height: 1.5;
+            padding: 25px;
+            font-family: "Arial", sans-serif;
+            line-height: 1.6;
             color: #000000;
         }
         
@@ -111,12 +112,9 @@ function App() {
         .content {
             margin: 25px 0;
             font-size: 12px;
-        }
-        
-        .story-text {
             white-space: pre-wrap;
-            font-family: "Arial", sans-serif !important;
-            line-height: 1.4;
+            font-family: "Arial", sans-serif;
+            line-height: 1.5;
         }
         
         .footer {
@@ -132,7 +130,7 @@ function App() {
 <body>
     <div class="header">
         <div class="logo-container">
-            <img src="${logoBase64}" alt="Sinapsys Tecnologia" class="logo">
+            <img src="${logoUrl}" alt="Sinapsys Tecnologia" class="logo">
         </div>
         <h1>HISTÓRIA DE USUÁRIO</h1>
         <div class="project-info">
@@ -144,7 +142,7 @@ function App() {
     </div>
     
     <div class="content">
-        <div class="story-text">${story}</div>
+        ${story.replace(/\n/g, '<br>')}
     </div>
     
     <div class="footer">
@@ -169,14 +167,11 @@ function App() {
     <div className="App">
       <header className="app-header">
         <div className="logo-container">
-          <img src="/logo-sinapsys2.png" alt="Sinapsys Tecnologia" className="logo" 
-               onError={(e) => {
-                 e.target.style.display = 'none';
-                 e.target.nextSibling.style.display = 'block';
-               }} />
-          <div className="logo-placeholder" style={{display: 'none'}}>
-            SINAPSYS TECNOLOGIA
-          </div>
+          <img 
+            src="/logo-sinapsys2.png" 
+            alt="Sinapsys Tecnologia" 
+            className="logo" 
+          />
           <h1>Gerador de Histórias de Usuário</h1>
         </div>
       </header>
@@ -224,7 +219,7 @@ function App() {
             </div>
 
             <button type="submit" disabled={loading} className="generate-btn">
-              {loading ? 'Gerando História...' : 'Gerar História de Usuário'}
+              {loading ? '🔄 Gerando História...' : '🚀 Gerar História de Usuário'}
             </button>
           </form>
 
@@ -237,13 +232,13 @@ function App() {
           {story && (
             <div className="story-result">
               <div className="result-header">
-                <h2>História Gerada com Sucesso! ✅</h2>
+                <h2>📄 História Gerada com Sucesso! ✅</h2>
                 <div className="action-buttons">
                   <button onClick={copyToClipboard} className="action-btn copy-btn">
-                    📋 Copiar
+                    📋 Copiar Texto
                   </button>
                   <button onClick={downloadWord} className="action-btn download-btn">
-                    📥 Baixar Word
+                    📥 Download Word
                   </button>
                 </div>
               </div>
