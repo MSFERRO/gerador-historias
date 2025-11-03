@@ -18,9 +18,8 @@ let openai;
 let aiStatus = 'NOT_CONFIGURED';
 const ACTIVE_MODEL = 'gpt-4o-mini';
 
-// ✅ VERIFICAÇÃO DA API KEY
 if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
-    console.log('✅ OpenAI API Key detectada:', process.env.OPENAI_API_KEY.substring(0, 12) + '...');
+    console.log('✅ OpenAI API Key detectada');
     
     try {
         openai = new OpenAI({ 
@@ -28,8 +27,7 @@ if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) 
             timeout: 30000
         });
         aiStatus = 'CONFIGURED';
-        console.log('✅ OpenAI instanciado com sucesso!');
-        console.log('🤖 Modelo:', ACTIVE_MODEL);
+        console.log('✅ OpenAI configurado | Modelo:', ACTIVE_MODEL);
         
         // Teste de conexão
         (async () => {
@@ -47,18 +45,16 @@ if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) 
                 console.log('❌ Erro no teste OpenAI:', error.message);
             }
         })();
-        
     } catch (error) {
-        console.log('❌ Erro ao criar OpenAI:', error.message);
+        console.log('❌ Erro configuração OpenAI:', error.message);
     }
 } else {
-    console.log('❌ OpenAI API Key não encontrada ou inválida');
-    console.log('💡 Chave no .env:', process.env.OPENAI_API_KEY ? 'EXISTE' : 'NÃO EXISTE');
+    console.log('❌ OpenAI API Key não encontrada');
 }
 
 console.log('📊 Status AI:', aiStatus);
 
-// ✅ FUNÇÃO IA COM OPENAI
+// ✅ FUNÇÃO IA COM FORMATAÇÃO PARA WORD
 async function generateWithAI(projectTitle, clientName, description) {
     console.log(`\n🤖 SOLICITANDO IA... (Status: ${aiStatus})`);
     
@@ -70,25 +66,62 @@ async function generateWithAI(projectTitle, clientName, description) {
     try {
         console.log('🚀 Chamando OpenAI...');
         
-        const prompt = `Como Product Owner Sênior, gere uma história de usuário completa em português:
+        const prompt = `Como Product Owner Sênior, gere uma história de usuário completa em português no formato EXATO abaixo:
 
 PROJETO: ${projectTitle}
 CLIENTE: ${clientName}
 DESCRIÇÃO: ${description}
 
-Formato profissional com:
-- COMO [persona], QUERO [objetivo], PARA [benefício]
-- Critérios de aceitação detalhados
-- Cenários de teste BDD
-- Requisitos não funcionais
+**FORMATO EXATO PARA DOCUMENTO WORD:**
 
-Seja detalhado e use markdown.`;
+HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}
+Cliente: ${clientName}
+Data: ${new Date().toLocaleDateString('pt-BR')}
+Status: Em Desenvolvimento
+
+HISTÓRIA DE USUÁRIO
+COMO: [persona específica]
+QUERO: [objetivo claro e detalhado]
+PARA: [benefício mensurável]
+
+DESCRIÇÃO DETALHADA
+[Descrição completa dos requisitos em parágrafos bem estruturados]
+
+CRITÉRIOS DE ACEITAÇÃO
+• [Critério 1 - funcionalidade principal]
+• [Critério 2 - aspectos técnicos] 
+• [Critério 3 - experiência do usuário]
+• [Critério 4 - segurança e proteção]
+• [Critério 5 - performance e velocidade]
+
+REQUISITOS TÉCNICOS
+• Backend Node.js/Express
+• Interface React responsiva
+• API RESTful
+• Armazenamento seguro de dados
+• Validação e tratamento de erros
+• Processamento inteligente de documentos
+
+CENÁRIOS DE TESTE
+[Cenários BDD formatados com Given-When-Then]
+
+REQUISITOS NÃO FUNCIONAIS
+• Performance: [requisitos de desempenho]
+• Segurança: [medidas de segurança]
+• Usabilidade: [facilidade de uso]
+• Confiabilidade: [disponibilidade e estabilidade]
+
+**INSTRUÇÕES IMPORTANTES:**
+- Use apenas este formato exato
+- Não mencione OpenAI, GPT, IA ou versões do sistema
+- Seja específico, detalhado e profissional
+- Use português claro e técnico`;
 
         const completion = await openai.chat.completions.create({
             messages: [
                 {
                     role: "system",
-                    content: "Você é um Product Owner experiente. Gere histórias de usuário profissionais em português."
+                    content: "Você é um Product Owner sênior especializado em documentação de requisitos. Gere histórias de usuário profissionais em português com formatação limpa para documentos Word. Não mencione OpenAI, GPT, IA ou versões do sistema em nenhuma circunstância."
                 },
                 {
                     role: "user",
@@ -97,30 +130,16 @@ Seja detalhado e use markdown.`;
             ],
             model: ACTIVE_MODEL,
             temperature: 0.7,
-            max_tokens: 2000,
+            max_tokens: 3500,
         });
 
         const aiResponse = completion.choices[0]?.message?.content;
         
         if (aiResponse && aiResponse.length > 100) {
             console.log('✅ OpenAI respondeu!', aiResponse.length, 'caracteres');
-            return `
-SISTEMA: ${projectTitle.toUpperCase()}
-CLIENTE: ${clientName}
-DATA: ${new Date().toLocaleDateString('pt-BR')}
-VERSÃO: 4.0 - OpenAI GPT-4o-mini
-
-================================================================================
-HISTÓRIA DE USUÁRIO GERADA POR IA
-================================================================================
-
-${aiResponse}
-
-================================================================================
-
-DOCUMENTO GERADO POR OPENAI GPT - SINAPSYS TECNOLOGIA
-${new Date().toLocaleString('pt-BR')}
-`.trim();
+            
+            // ✅ FORMATAÇÃO LIMPA PARA WORD
+            return aiResponse.trim() + `\n\nDocumento gerado pela aplicação - Sinapsys Tecnologia\n${new Date().toLocaleString('pt-BR')}`;
         }
         
         throw new Error('Resposta muito curta');
@@ -131,24 +150,65 @@ ${new Date().toLocaleString('pt-BR')}
     }
 }
 
-// ✅ FALLBACK
+// ✅ FALLBACK ATUALIZADO
 function generateFallbackStory(projectTitle, clientName, description) {
-    return `
-SISTEMA: ${projectTitle.toUpperCase()}
-CLIENTE: ${clientName}
-DATA: ${new Date().toLocaleDateString('pt-BR')}
-VERSÃO: 4.0 - Processamento Inteligente
+    const extractRole = () => {
+        if (description.toLowerCase().includes('como gerente')) return 'Gerente de Projetos';
+        if (description.toLowerCase().includes('como analista')) return 'Analista de Sistemas';
+        if (description.toLowerCase().includes('como usuário')) return 'Usuário do Sistema';
+        if (description.toLowerCase().includes('como admin')) return 'Administrador do Sistema';
+        return 'Usuário do Sistema';
+    };
 
-**COMO** Gerente de Projetos
-**QUERO** ${description.substring(0, 100)}...
-**PARA** melhorar a eficiência operacional
+    const extractGoal = () => {
+        const match = description.match(/quero\s+([^.!?]+)/i);
+        return match ? match[1].trim() : description.substring(0, 100) + '...';
+    };
 
-DOCUMENTO GERADO POR PROCESSAMENTO INTELIGENTE
-${new Date().toLocaleString('pt-BR')}
-`.trim();
+    return `HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}
+Cliente: ${clientName}
+Data: ${new Date().toLocaleDateString('pt-BR')}
+Status: Em Desenvolvimento
+
+HISTÓRIA DE USUÁRIO
+COMO: ${extractRole()}
+QUERO: ${extractGoal()}
+PARA: melhorar eficiência operacional e otimizar processos
+
+DESCRIÇÃO DETALHADA
+${description}
+
+CRITÉRIOS DE ACEITAÇÃO
+• Funcionalidade implementada conforme especificado
+• Interface intuitiva e responsiva
+• Processamento robusto e seguro
+• Performance adequada para o uso
+• Documentação técnica disponível
+
+REQUISITOS TÉCNICOS
+• Backend Node.js/Express
+• Processamento de documentos inteligente
+• Interface React responsiva
+• API RESTful
+• Armazenamento seguro de dados
+• Validação e tratamento de erros
+
+CENÁRIOS DE TESTE
+• Cenário principal: fluxo básico da funcionalidade
+• Cenário alternativo: situações excepcionais
+• Cenário de erro: tratamento de exceções
+
+REQUISITOS NÃO FUNCIONAIS
+• Performance: tempo de resposta adequado
+• Segurança: proteção de dados e acesso
+• Usabilidade: interface clara e intuitiva
+• Confiabilidade: disponibilidade do sistema
+
+Documento gerado pela aplicação - Sinapsys Tecnologia
+${new Date().toLocaleString('pt-BR')}`;
 }
 
-// ✅ ROTAS COM INFO DA IA
+// ✅ ROTAS
 app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'OK',
@@ -174,7 +234,7 @@ app.get('/api/test-ai', async (req, res) => {
 
     try {
         const completion = await openai.chat.completions.create({
-            messages: [{ role: "user", content: "Responda com: IA FUNCIONANDO" }],
+            messages: [{ role: "user", content: "Responda com: SISTEMA FUNCIONANDO" }],
             model: ACTIVE_MODEL,
             max_tokens: 10,
         });
@@ -203,11 +263,26 @@ app.post('/api/generate-story', async (req, res) => {
         console.log(`\n📥 REQUISIÇÃO: ${projectTitle}`);
         console.log('   OpenAI Status:', aiStatus);
 
+        if (!projectTitle || !clientName || !description) {
+            return res.status(400).json({ 
+                success: false,
+                error: 'Todos os campos são obrigatórios' 
+            });
+        }
+
+        if (description.length < 10) {
+            return res.status(400).json({
+                success: false,
+                error: 'Descrição muito curta',
+                minLength: 10
+            });
+        }
+
         const startTime = Date.now();
         const story = await generateWithAI(projectTitle, clientName, description);
         const processingTime = Date.now() - startTime;
 
-        const usingAI = story.includes('OpenAI GPT');
+        const usingAI = !story.includes('Processamento Inteligente');
         console.log(`✅ Gerado em ${processingTime}ms | OpenAI: ${usingAI ? 'SIM' : 'NÃO'}`);
 
         res.json({
@@ -215,32 +290,33 @@ app.post('/api/generate-story', async (req, res) => {
             story: story,
             metadata: {
                 aiGenerated: usingAI,
-                mode: usingAI ? 'OpenAI GPT' : 'Processamento Inteligente',
                 processingTime: `${processingTime}ms`,
-                aiStatus: aiStatus
+                timestamp: new Date().toISOString()
             }
         });
 
     } catch (error) {
         console.error('💥 Erro:', error);
-        res.status(500).json({ error: 'Erro interno' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erro interno do servidor'
+        });
     }
 });
 
-app.get('/', (req, res) => {
-    res.json({ 
-        message: '🚀 SINAPSYS OPENAI BACKEND',
-        aiStatus: aiStatus,
-        model: ACTIVE_MODEL
-    });
+// ✅ SERVE FRONTEND
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
 });
 
+// ✅ INICIAR SERVIDOR
 app.listen(PORT, () => {
     console.log('\n========================================');
-    console.log('🚀 SINAPSYS OPENAI - ONLINE');
+    console.log('🚀 SINAPSYS BACKEND - ONLINE');
     console.log(`📍 Porta: ${PORT}`);
     console.log(`🌐 Ambiente: ${process.env.NODE_ENV}`);
     console.log(`🤖 AI Status: ${aiStatus}`);
-    console.log(`🧠 Modelo: ${ACTIVE_MODEL}`);
     console.log('========================================\n');
 });
