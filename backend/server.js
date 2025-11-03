@@ -304,10 +304,11 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
-// ✅ SERVE FRONTEND
+// ✅ SERVE FRONTEND - CORREÇÃO: SEM app.get('*')
 app.use(express.static(path.join(__dirname, '../frontend/build')));
 
-app.get('*', (req, res) => {
+// ✅ ROTA PARA QUALQUER OUTRA REQUISIÇÃO - CORREÇÃO
+app.use((req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
 });
 
