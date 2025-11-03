@@ -1,98 +1,172 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { Groq } = require('groq-sdk'); // ✅ Importação direta
+const { Groq } = require('groq-sdk');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// ✅ DIAGNÓSTICO COMPLETO NO INÍCIO
+console.log('\n🔍 DIAGNÓSTICO INICIAL:');
+console.log('=== VARIÁVEIS DE AMBIENTE ===');
+console.log('PORT:', process.env.PORT);
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
+
+if (process.env.GROQ_API_KEY) {
+    console.log('GROQ_API_KEY length:', process.env.GROQ_API_KEY.length);
+    console.log('GROQ_API_KEY starts with gsk_:', process.env.GROQ_API_KEY.startsWith('gsk_'));
+    console.log('GROQ_API_KEY preview:', process.env.GROQ_API_KEY.substring(0, 20) + '...');
+} else {
+    console.log('❌ GROQ_API_KEY: NÃO ENCONTRADA');
+    console.log('Todas as variáveis:', Object.keys(process.env));
+}
+
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// ✅ CONFIGURAÇÃO GROQ - SIMPLES E DIRETA
-console.log('\n=== 🚀 CONFIGURANDO GROQ IA ===');
+// ✅ CONFIGURAÇÃO GROQ - COM FALLBACK AUTOMÁTICO
+let groq = null;
+let groqStatus = 'NOT_CONFIGURED';
 
-let groq;
-let groqReady = false;
+console.log('\n🚀 INICIALIZANDO GROQ...');
 
-// Verificação IMEDIATA da API Key
+// Verificação FORÇADA da API Key
 if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.startsWith('gsk_')) {
-    console.log('✅ API Key detectada:', process.env.GROQ_API_KEY.substring(0, 20) + '...');
+    console.log('✅ API Key válida detectada!');
     
     try {
         groq = new Groq({
             apiKey: process.env.GROQ_API_KEY,
             timeout: 30000
         });
+        groqStatus = 'CONFIGURED';
         console.log('✅ Groq instanciado com sucesso!');
-        groqReady = true;
         
-        // Teste de conexão em background
-        testGroqConnection();
+        // Teste de conexão IMEDIATO
+        (async () => {
+            try {
+                console.log('🔄 Testando conexão Groq...');
+                const test = await groq.chat.completions.create({
+                    messages: [{ role: "user", content: "Teste" }],
+                    model: "llama3-8b-8192",
+                    max_tokens: 5,
+                });
+                groqStatus = 'WORKING';
+                console.log('🎉 CONEXÃO GROQ: OK -', test.choices[0]?.message?.content);
+            } catch (testError) {
+                groqStatus = 'ERROR';
+                console.log('❌ Erro no teste Groq:', testError.message);
+            }
+        })();
         
     } catch (error) {
-        console.log('❌ Erro ao criar instância Groq:', error.message);
-        groqReady = false;
+        console.log('❌ Erro ao criar Groq:', error.message);
+        groqStatus = 'INIT_ERROR';
     }
 } else {
-    console.log('❌ API Key não encontrada ou inválida');
-    console.log('   - GROQ_API_KEY existe?', !!process.env.GROQ_API_KEY);
-    if (process.env.GROQ_API_KEY) {
-        console.log('   - Valor:', process.env.GROQ_API_KEY.substring(0, 10) + '...');
-    }
+    console.log('❌ API Key INVÁLIDA ou não encontrada');
+    console.log('   - Valor atual:', process.env.GROQ_API_KEY || 'UNDEFINED');
+    groqStatus = 'INVALID_API_KEY';
 }
 
-// Função para testar conexão
-async function testGroqConnection() {
-    if (!groq) return;
+console.log('📊 Status final Groq:', groqStatus);
+
+// ✅ ROTA DE DIAGNÓSTICO COMPLETO
+app.get('/api/env-check', (req, res) => {
+    const envInfo = {
+        groq_api_key: {
+            exists: !!process.env.GROQ_API_KEY,
+            value: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.substring(0, 15) + '...' : 'NOT_FOUND',
+            valid: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.startsWith('gsk_') : false,
+            length: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.length : 0
+        },
+        all_env_vars: Object.keys(process.env).filter(key => 
+            key.includes('GROQ') || key.includes('NODE') || key.includes('PORT')
+        ),
+        groq_status: groqStatus,
+        groq_configured: !!groq,
+        timestamp: new Date().toISOString()
+    };
     
-    try {
-        console.log('🔄 Testando conexão com Groq...');
-        const completion = await groq.chat.completions.create({
-            messages: [{ role: "user", content: "Diga apenas OK" }],
-            model: "llama3-8b-8192",
-            max_tokens: 5,
+    res.json(envInfo);
+});
+
+// ✅ TESTE DIRETO DA GROQ
+app.get('/api/test-groq-direct', async (req, res) => {
+    if (!groq) {
+        return res.json({
+            status: 'GROQ_NOT_READY',
+            message: 'Groq não está configurado',
+            groq_status: groqStatus,
+            api_key_exists: !!process.env.GROQ_API_KEY
         });
-        console.log('✅ Conexão Groq: FUNCIONANDO -', completion.choices[0]?.message?.content);
-    } catch (error) {
-        console.log('❌ Falha na conexão Groq:', error.message);
-        groqReady = false;
     }
-}
 
-// ✅ FUNÇÃO PRINCIPAL DA IA
+    try {
+        console.log('🧪 Teste direto da Groq...');
+        const completion = await groq.chat.completions.create({
+            messages: [{ 
+                role: "user", 
+                content: "Responda exatamente com: FUNCIONANDO" 
+            }],
+            model: "llama3-8b-8192",
+            max_tokens: 10,
+            temperature: 0.1
+        });
+
+        const response = completion.choices[0]?.message?.content;
+        
+        res.json({
+            status: 'SUCCESS',
+            message: 'Groq está funcionando!',
+            response: response,
+            groq_status: groqStatus,
+            model: 'llama3-8b-8192'
+        });
+
+    } catch (error) {
+        res.json({
+            status: 'ERROR',
+            message: 'Erro na Groq',
+            error: error.message,
+            groq_status: groqStatus
+        });
+    }
+});
+
+// ✅ FUNÇÃO IA COM FALLBACK GARANTIDO
 async function generateWithAI(projectTitle, clientName, description) {
-    console.log(`\n🤖 SOLICITANDO IA GROQ... (${groqReady ? 'PRONTA' : 'NÃO PRONTA'})`);
+    console.log(`\n🤖 GERANDO HISTÓRIA... (Groq: ${groqStatus})`);
     
-    if (!groqReady || !groq) {
-        console.log('🔰 Usando fallback (Groq não disponível)');
+    // Se Groq não estiver PRONTO, usa fallback IMEDIATAMENTE
+    if (groqStatus !== 'WORKING' || !groq) {
+        console.log('🔰 Usando FALLBACK - Groq não disponível');
         return generateFallbackStory(projectTitle, clientName, description);
     }
 
     try {
-        console.log('🚀 Chamando API Groq...');
+        console.log('🚀 Chamando IA Groq...');
         
-        const prompt = `Como Product Owner Sênior, gere uma história de usuário completa para:
+        const prompt = `Como Product Owner, gere uma história de usuário completa em português:
 
 PROJETO: ${projectTitle}
-CLIENTE: ${clientName}
+CLIENTE: ${clientName}  
 DESCRIÇÃO: ${description}
 
-Formato:
-- COMO [persona], QUERO [objetivo], PARA [benefício]
+Inclua:
+- COMO [persona], QUERO [ação], PARA [benefício]
 - Critérios de aceitação
 - Cenários de teste
-- Requisitos não funcionais
-
-Use português brasileiro.`;
+- Requisitos não funcionais`;
 
         const completion = await groq.chat.completions.create({
             messages: [
                 {
-                    role: "system",
-                    content: "Você é um Product Owner experiente. Gere histórias de usuário profissionais e completas."
+                    role: "system", 
+                    content: "Você é um Product Owner sênior. Gere histórias de usuário profissionais."
                 },
                 {
                     role: "user",
@@ -101,18 +175,26 @@ Use português brasileiro.`;
             ],
             model: "llama3-8b-8192",
             temperature: 0.7,
-            max_tokens: 3000,
+            max_tokens: 2000,
         });
 
         const aiResponse = completion.choices[0]?.message?.content;
         
-        if (!aiResponse) {
-            throw new Error('Resposta vazia da IA');
+        if (aiResponse && aiResponse.length > 50) {
+            console.log('✅ IA respondeu com sucesso!');
+            return formatAIResponse(aiResponse, projectTitle, clientName);
+        } else {
+            throw new Error('Resposta muito curta da IA');
         }
 
-        console.log('✅ IA respondeu com', aiResponse.length, 'caracteres');
-        
-        return `
+    } catch (error) {
+        console.error('❌ Erro na IA:', error.message);
+        return generateFallbackStory(projectTitle, clientName, description);
+    }
+}
+
+function formatAIResponse(aiContent, projectTitle, clientName) {
+    return `
 SISTEMA: ${projectTitle.toUpperCase()}
 CLIENTE: ${clientName}
 DATA: ${new Date().toLocaleDateString('pt-BR')}
@@ -122,22 +204,15 @@ VERSÃO: 4.0 - IA Groq Powered
 HISTÓRIA DE USUÁRIO GERADA POR IA
 ================================================================================
 
-${aiResponse}
+${aiContent}
 
 ================================================================================
 
 DOCUMENTO GERADO POR IA GROQ - SINAPSYS TECNOLOGIA
 ${new Date().toLocaleString('pt-BR')}
 `.trim();
-
-    } catch (error) {
-        console.error('❌ Erro na IA:', error.message);
-        console.log('🔰 Alternando para fallback...');
-        return generateFallbackStory(projectTitle, clientName, description);
-    }
 }
 
-// ✅ FALLBACK SIMPLES
 function generateFallbackStory(projectTitle, clientName, description) {
     return `
 SISTEMA: ${projectTitle.toUpperCase()}
@@ -154,61 +229,33 @@ ${new Date().toLocaleString('pt-BR')}
 `.trim();
 }
 
-// ✅ ROTAS DE DIAGNÓSTICO
-app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        groq: {
-            ready: groqReady,
-            configured: !!groq,
-            apiKeyExists: !!process.env.GROQ_API_KEY
-        },
-        environment: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-    });
-});
-
-app.get('/api/debug', (req, res) => {
-    res.json({
-        groq: {
-            ready: groqReady,
-            configured: !!groq,
-            apiKeyExists: !!process.env.GROQ_API_KEY,
-            apiKeyValid: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.startsWith('gsk_') : false,
-            apiKeyPreview: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.substring(0, 15) + '...' : 'N/A'
-        },
-        system: {
-            nodeEnv: process.env.NODE_ENV,
-            port: PORT,
-            timestamp: new Date().toISOString()
-        }
-    });
-});
-
 // ✅ ROTA PRINCIPAL
 app.post('/api/generate-story', async (req, res) => {
     try {
         const { projectTitle, clientName, description } = req.body;
 
-        console.log(`\n📥 NOVA REQUISIÇÃO: ${projectTitle} | Groq: ${groqReady ? 'SIM' : 'NÃO'}`);
+        console.log(`\n📥 REQUISIÇÃO: ${projectTitle} | Groq Status: ${groqStatus}`);
 
         if (!projectTitle || !clientName || !description) {
-            return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+            return res.status(400).json({ error: 'Campos obrigatórios' });
         }
 
         const startTime = Date.now();
         const story = await generateWithAI(projectTitle, clientName, description);
         const processingTime = Date.now() - startTime;
 
-        console.log(`✅ Gerado em ${processingTime}ms | Modo: ${groqReady ? 'IA Groq' : 'Fallback'}`);
+        const usingAI = groqStatus === 'WORKING' && story.includes('IA Groq Powered');
+        
+        console.log(`✅ Gerado em ${processingTime}ms | IA: ${usingAI ? 'SIM' : 'NÃO'}`);
 
         res.json({
             success: true,
             story: story,
             metadata: {
+                aiGenerated: usingAI,
+                mode: usingAI ? 'IA Groq' : 'Processamento Inteligente',
+                groqStatus: groqStatus,
                 processingTime: `${processingTime}ms`,
-                aiGenerated: groqReady,
-                mode: groqReady ? 'IA Groq' : 'Processamento Inteligente',
                 timestamp: new Date().toISOString()
             }
         });
@@ -219,7 +266,20 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
-// ✅ SERVE FRONTEND
+// ✅ HEALTH CHECK
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        groq: {
+            status: groqStatus,
+            ready: groqStatus === 'WORKING',
+            configured: !!groq
+        },
+        environment: process.env.NODE_ENV
+    });
+});
+
+// Serve frontend
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../frontend/build')));
     app.use((req, res) => {
@@ -230,11 +290,17 @@ if (process.env.NODE_ENV === 'production') {
 // ✅ INICIAR SERVIDOR
 app.listen(PORT, () => {
     console.log('\n========================================');
-    console.log('🚀 SERVIDOR INICIADO - SINAPSYS IA');
+    console.log('🚀 SERVIDOR INICIADO');
     console.log(`📍 Porta: ${PORT}`);
     console.log(`🌐 Ambiente: ${process.env.NODE_ENV}`);
-    console.log(`🤖 Groq IA: ${groqReady ? 'PRONTA 🎯' : 'NÃO PRONTA ⚠️'}`);
-    console.log(`📊 Health: http://localhost:${PORT}/api/health`);
-    console.log(`🔍 Debug: http://localhost:${PORT}/api/debug`);
+    console.log(`🤖 Groq Status: ${groqStatus}`);
     console.log('========================================\n');
+    
+    // URLs para teste
+    console.log('🔗 URLs para teste:');
+    console.log(`📊 Health: /api/health`);
+    console.log(`🔍 Env Check: /api/env-check`);
+    console.log(`🧪 Test Groq: /api/test-groq-direct`);
+    console.log(`🎯 Generate: /api/generate-story`);
+    console.log('');
 });
