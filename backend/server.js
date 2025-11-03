@@ -9,6 +9,7 @@ const PORT = process.env.PORT || 10000;
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use(express.static('public')); // Serve arquivos estáticos
 
 // ✅ CONFIGURAÇÃO OPENAI
 console.log('\n🔧 CONFIGURANDO OPENAI GPT-4o-mini...');
@@ -303,7 +304,7 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
-// ✅ NOVA ROTA PARA DOWNLOAD DE WORD
+// ✅ ROTA PARA DOWNLOAD DE WORD - CORRIGIDA
 app.post('/api/generate-word-document', async (req, res) => {
     try {
         const { projectTitle, clientName, storyContent } = req.body;
@@ -315,83 +316,112 @@ app.post('/api/generate-word-document', async (req, res) => {
             });
         }
 
-        const wordContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-              xmlns:w='urn:schemas-microsoft-com:office:word' 
-              xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-            <meta charset="UTF-8">
-            <title>História de Usuário - ${projectTitle}</title>
-            <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    line-height: 1.6;
-                    margin: 40px;
-                    color: #333;
-                }
-                .header { 
-                    text-align: center; 
-                    margin-bottom: 30px;
-                    border-bottom: 2px solid #333;
-                    padding-bottom: 20px;
-                }
-                h1 { 
-                    color: #2c3e50; 
-                    margin: 10px 0;
-                    font-size: 24px;
-                }
-                .project-info {
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-left: 4px solid #3498db;
-                    margin: 15px 0;
-                    font-size: 14px;
-                }
-                .content {
-                    margin: 20px 0;
-                }
-                pre {
-                    white-space: pre-wrap;
-                    font-family: Arial, sans-serif;
-                    font-size: 12px;
-                    line-height: 1.4;
-                }
-                .footer {
-                    text-align: center;
-                    margin-top: 40px;
-                    padding-top: 20px;
-                    border-top: 1px solid #ddd;
-                    color: #7f8c8d;
-                    font-size: 11px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>HISTÓRIA DE USUÁRIO</h1>
-                <div class="project-info">
-                    <strong>Sistema:</strong> ${projectTitle}<br>
-                    <strong>Cliente:</strong> ${clientName || 'Não informado'}<br>
-                    <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
-                    <strong>Status:</strong> Em Desenvolvimento
-                </div>
-            </div>
-            
-            <div class="content">
-                <pre>${storyContent}</pre>
-            </div>
-            
-            <div class="footer">
-                Documento gerado pela aplicação - Sinapsys Tecnologia<br>
-                ${new Date().toLocaleString('pt-BR')}
-            </div>
-        </body>
-        </html>
-        `;
+        // Base64 da logo Sinapsys (SVG simples como fallback)
+        const logoBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTUwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMDA0RjlGIi8+Cjx0ZXh0IHg9Ijc1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U0lOQVBTWVM8L3RleHQ+Cjx0ZXh0IHg9Ijc1IiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVjbm9sb2dpYTwvdGV4dD4KPC9zdmc+';
 
-        // Configurar headers para download
-        res.setHeader('Content-Type', 'application/vnd.ms-word');
-        res.setHeader('Content-Disposition', `attachment; filename="historia-usuario-${projectTitle.replace(/\s+/g, '-')}.doc"`);
+        const wordContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>História de Usuário - ${projectTitle}</title>
+    <style>
+        /* Reset completo para Word */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: "Arial", sans-serif !important;
+            line-height: 1.5;
+            color: #000000;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        
+        .logo-container {
+            margin-bottom: 15px;
+        }
+        
+        .logo {
+            height: 60px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin: 10px 0 5px 0;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .project-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin: 15px 0;
+            font-size: 12px;
+            border: 1px solid #ddd;
+        }
+        
+        .content {
+            margin: 25px 0;
+            font-size: 12px;
+        }
+        
+        .story-text {
+            white-space: pre-wrap;
+            font-family: "Arial", sans-serif !important;
+            line-height: 1.4;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 10px;
+        }
+        
+        /* Estilos específicos para Word */
+        @page {
+            margin: 2cm;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo-container">
+            <img src="${logoBase64}" alt="Sinapsys Tecnologia" class="logo">
+        </div>
+        <h1>HISTÓRIA DE USUÁRIO</h1>
+        <div class="project-info">
+            <strong>Sistema:</strong> ${projectTitle}<br>
+            <strong>Cliente:</strong> ${clientName || 'Não informado'}<br>
+            <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
+            <strong>Status:</strong> Em Desenvolvimento
+        </div>
+    </div>
+    
+    <div class="content">
+        <div class="story-text">${storyContent}</div>
+    </div>
+    
+    <div class="footer">
+        Documento gerado pela aplicação - Sinapsys Tecnologia<br>
+        ${new Date().toLocaleString('pt-BR')}
+    </div>
+</body>
+</html>`;
+
+        // Configurar headers para download - CORRIGIDO
+        res.setHeader('Content-Type', 'application/msword');
+        res.setHeader('Content-Disposition', `attachment; filename="historia-usuario-${projectTitle.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')}.doc"`);
+        res.setHeader('Content-Length', Buffer.byteLength(wordContent, 'utf8'));
         
         res.send(wordContent);
 
@@ -402,6 +432,21 @@ app.post('/api/generate-word-document', async (req, res) => {
             error: 'Erro ao gerar documento Word'
         });
     }
+});
+
+// ✅ ROTA PARA SERVIR A LOGO
+app.get('/logo.png', (req, res) => {
+    // SVG simples como fallback
+    const logoSVG = `
+    <svg width="150" height="50" viewBox="0 0 150 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="150" height="50" fill="#004F9F"/>
+        <text x="75" y="28" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">SINAPSYS</text>
+        <text x="75" y="40" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Tecnologia</text>
+    </svg>
+    `;
+    
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(logoSVG);
 });
 
 // ✅ ROTA RAIZ - APENAS INFO DA API
