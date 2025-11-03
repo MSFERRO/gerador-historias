@@ -60,14 +60,20 @@ console.log('📊 Status AI:', aiStatus);
 function getLogoBase64() {
     try {
         const logoPath = path.join(__dirname, 'public', 'logo-sinapsys2.png');
+        console.log('🔍 Procurando logo em:', logoPath);
         
         if (fs.existsSync(logoPath)) {
             const logoBuffer = fs.readFileSync(logoPath);
+            console.log('✅ Logo encontrada, tamanho:', logoBuffer.length, 'bytes');
             const base64Logo = logoBuffer.toString('base64');
             return `data:image/png;base64,${base64Logo}`;
         } else {
-            console.log('⚠️ Logo não encontrada, usando fallback SVG');
-            // Fallback SVG se a logo não existir
+            console.log('❌ Logo não encontrada, verifique o caminho:', logoPath);
+            // Tentar encontrar qualquer arquivo de imagem na pasta public
+            const files = fs.readdirSync(path.join(__dirname, 'public'));
+            console.log('📁 Arquivos na pasta public:', files);
+            
+            // Fallback SVG
             return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTUwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMDA0RjlGIi8+Cjx0ZXh0IHg9Ijc1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U0lOQVBTWVM8L3RleHQ+Cjx0ZXh0IHg9Ijc1IiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVjbm9sb2dpYTwvdGV4dD4KPC9zdmc+';
         }
     } catch (error) {
@@ -364,7 +370,7 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
-// ✅ ROTA PARA DOWNLOAD DE WORD - LOGO EM BASE64
+// ✅ ROTA PARA DOWNLOAD DE WORD - SEM CENTRALIZAÇÃO
 app.post('/api/generate-word-document', async (req, res) => {
     try {
         const { projectTitle, clientName, storyContent } = req.body;
@@ -394,7 +400,6 @@ app.post('/api/generate-word-document', async (req, res) => {
         }
         
         .header {
-            text-align: center;
             margin-bottom: 30px;
             border-bottom: 2px solid #333;
             padding-bottom: 20px;
@@ -406,8 +411,6 @@ app.post('/api/generate-word-document', async (req, res) => {
         
         .logo {
             height: 60px;
-            display: block;
-            margin: 0 auto;
         }
         
         h1 {
@@ -435,7 +438,6 @@ app.post('/api/generate-word-document', async (req, res) => {
         }
         
         .footer {
-            text-align: center;
             margin-top: 40px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
@@ -476,7 +478,6 @@ app.post('/api/generate-word-document', async (req, res) => {
         // Configurar headers para download
         res.setHeader('Content-Type', 'application/msword');
         res.setHeader('Content-Disposition', `attachment; filename="historia-usuario-${projectTitle.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')}.doc"`);
-        res.setHeader('Content-Length', Buffer.byteLength(wordContent, 'utf8'));
         
         res.send(wordContent);
 
