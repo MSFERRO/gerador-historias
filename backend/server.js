@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 10000;
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public')); // Serve arquivos estáticos
+app.use(express.static('public'));
 
 // ✅ CONFIGURAÇÃO OPENAI
 console.log('\n🔧 CONFIGURANDO OPENAI GPT-4o-mini...');
@@ -54,7 +54,7 @@ if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) 
 
 console.log('📊 Status AI:', aiStatus);
 
-// ✅ FUNÇÃO IA COM FORMATAÇÃO PARA WORD
+// ✅ FUNÇÃO IA COM FORMATAÇÃO MELHORADA
 async function generateWithAI(projectTitle, clientName, description) {
     console.log(`\n🤖 SOLICITANDO IA... (Status: ${aiStatus})`);
     
@@ -72,7 +72,7 @@ PROJETO: ${projectTitle}
 CLIENTE: ${clientName}
 DESCRIÇÃO: ${description}
 
-**FORMATO EXATO PARA DOCUMENTO WORD:**
+**FORMATO EXATO - USE DUAS QUEBRAS DE LINHA ENTRE SEÇÕES:**
 
 HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}
 Cliente: ${clientName}
@@ -111,17 +111,18 @@ REQUISITOS NÃO FUNCIONAIS
 • Usabilidade: [facilidade de uso]
 • Confiabilidade: [disponibilidade e estabilidade]
 
-**INSTRUÇÕES IMPORTANTES:**
-- Use apenas este formato exato
+**INSTRUÇÕES CRÍTICAS:**
+- USE \\n\\n (DUAS QUEBRAS DE LINHA) ENTRE CADA SEÇÃO PRINCIPAL
+- Use bullets (•) para listas, não asteriscos
+- Formatação limpa e profissional
 - Não mencione OpenAI, GPT, IA ou versões do sistema
-- Seja específico, detalhado e profissional
-- Use português claro e técnico`;
+- Seja específico e detalhado`;
 
         const completion = await openai.chat.completions.create({
             messages: [
                 {
                     role: "system",
-                    content: "Você é um Product Owner sênior especializado em documentação de requisitos. Gere histórias de usuário profissionais em português com formatação limpa para documentos Word. Não mencione OpenAI, GPT, IA ou versões do sistema em nenhuma circunstância."
+                    content: "Você é um Product Owner sênior especializado em documentação de requisitos. Gere histórias de usuário profissionais em português com formatação limpa para documentos Word. Use DUAS quebras de linha entre seções. Não mencione OpenAI, GPT, IA ou versões do sistema."
                 },
                 {
                     role: "user",
@@ -130,7 +131,7 @@ REQUISITOS NÃO FUNCIONAIS
             ],
             model: ACTIVE_MODEL,
             temperature: 0.7,
-            max_tokens: 3500,
+            max_tokens: 4000,
         });
 
         const aiResponse = completion.choices[0]?.message?.content;
@@ -138,8 +139,13 @@ REQUISITOS NÃO FUNCIONAIS
         if (aiResponse && aiResponse.length > 100) {
             console.log('✅ OpenAI respondeu!', aiResponse.length, 'caracteres');
             
-            // ✅ FORMATAÇÃO LIMPA PARA WORD
-            return aiResponse.trim() + `\n\nDocumento gerado pela aplicação - Sinapsys Tecnologia\n${new Date().toLocaleString('pt-BR')}`;
+            // Limpar e formatar resposta
+            const cleanResponse = aiResponse
+                .replace(/\*\*/g, '') // Remove markdown bold
+                .replace(/\*/g, '•')  // Substitui asteriscos por bullets
+                .trim();
+                
+            return cleanResponse + `\n\nDocumento gerado pela aplicação - Sinapsys Tecnologia\n${new Date().toLocaleString('pt-BR')}`;
         }
         
         throw new Error('Resposta muito curta');
@@ -316,7 +322,7 @@ app.post('/api/generate-word-document', async (req, res) => {
             });
         }
 
-        // Base64 da logo Sinapsys (SVG simples como fallback)
+        // Base64 da logo Sinapsys (SVG)
         const logoBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTUwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMDA0RjlGIi8+Cjx0ZXh0IHg9Ijc1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U0lOQVBTWVM8L3RleHQ+Cjx0ZXh0IHg9Ijc1IiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVjbm9sb2dpYTwvdGV4dD4KPC9zdmc+';
 
         const wordContent = `<!DOCTYPE html>
@@ -325,12 +331,11 @@ app.post('/api/generate-word-document', async (req, res) => {
     <meta charset="UTF-8">
     <title>História de Usuário - ${projectTitle}</title>
     <style>
-        /* Reset completo para Word */
         body, html {
             margin: 0;
-            padding: 0;
-            font-family: "Arial", sans-serif !important;
-            line-height: 1.5;
+            padding: 20px;
+            font-family: "Arial", sans-serif;
+            line-height: 1.6;
             color: #000000;
         }
         
@@ -372,10 +377,30 @@ app.post('/api/generate-word-document', async (req, res) => {
             font-size: 12px;
         }
         
-        .story-text {
+        .story-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        .section-content {
+            margin-left: 15px;
             white-space: pre-wrap;
-            font-family: "Arial", sans-serif !important;
-            line-height: 1.4;
+            font-family: "Arial", sans-serif;
+            line-height: 1.5;
+        }
+        
+        .criteria-list, .requirements-list {
+            margin: 10px 0;
+            padding-left: 20px;
         }
         
         .footer {
@@ -387,9 +412,8 @@ app.post('/api/generate-word-document', async (req, res) => {
             font-size: 10px;
         }
         
-        /* Estilos específicos para Word */
         @page {
-            margin: 2cm;
+            margin: 1in;
         }
     </style>
 </head>
@@ -408,7 +432,7 @@ app.post('/api/generate-word-document', async (req, res) => {
     </div>
     
     <div class="content">
-        <div class="story-text">${storyContent}</div>
+        ${formatStoryForWord(storyContent)}
     </div>
     
     <div class="footer">
@@ -418,7 +442,7 @@ app.post('/api/generate-word-document', async (req, res) => {
 </body>
 </html>`;
 
-        // Configurar headers para download - CORRIGIDO
+        // Configurar headers para download
         res.setHeader('Content-Type', 'application/msword');
         res.setHeader('Content-Disposition', `attachment; filename="historia-usuario-${projectTitle.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')}.doc"`);
         res.setHeader('Content-Length', Buffer.byteLength(wordContent, 'utf8'));
@@ -434,22 +458,53 @@ app.post('/api/generate-word-document', async (req, res) => {
     }
 });
 
-// ✅ ROTA PARA SERVIR A LOGO
-app.get('/logo.png', (req, res) => {
-    // SVG simples como fallback
-    const logoSVG = `
-    <svg width="150" height="50" viewBox="0 0 150 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="150" height="50" fill="#004F9F"/>
-        <text x="75" y="28" font-family="Arial, sans-serif" font-size="14" fill="white" text-anchor="middle">SINAPSYS</text>
-        <text x="75" y="40" font-family="Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Tecnologia</text>
-    </svg>
-    `;
+// ✅ FUNÇÃO AUXILIAR PARA FORMATAR HISTÓRIA PARA WORD
+function formatStoryForWord(storyText) {
+    const sections = storyText.split('\n\n');
+    let html = '';
     
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.send(logoSVG);
-});
+    sections.forEach(section => {
+        if (section.trim()) {
+            const lines = section.split('\n');
+            const firstLine = lines[0].trim();
+            
+            // Pular seções já tratadas no cabeçalho
+            if (firstLine.includes('HISTÓRIA DE USUÁRIO -') || 
+                firstLine.includes('Cliente:') || 
+                firstLine.includes('Data:') || 
+                firstLine.includes('Status:') ||
+                firstLine.includes('Documento gerado')) {
+                return;
+            }
+            
+            // Identificar seções principais
+            if (firstLine.includes('HISTÓRIA DE USUÁRIO') ||
+                firstLine.includes('DESCRIÇÃO DETALHADA') ||
+                firstLine.includes('CRITÉRIOS DE ACEITAÇÃO') ||
+                firstLine.includes('REQUISITOS TÉCNICOS') ||
+                firstLine.includes('CENÁRIOS DE TESTE') ||
+                firstLine.includes('REQUISITOS NÃO FUNCIONAIS')) {
+                
+                const content = lines.slice(1).join('<br>').replace(/\•/g, '•');
+                html += `
+                <div class="story-section">
+                    <div class="section-title">${firstLine}</div>
+                    <div class="section-content">${content}</div>
+                </div>`;
+            } else {
+                // Seção sem título específico
+                html += `
+                <div class="story-section">
+                    <div class="section-content">${section.replace(/\n/g, '<br>').replace(/\•/g, '•')}</div>
+                </div>`;
+            }
+        }
+    });
+    
+    return html;
+}
 
-// ✅ ROTA RAIZ - APENAS INFO DA API
+// ✅ ROTA RAIZ
 app.get('/', (req, res) => {
     res.json({
         message: '🚀 SINAPSYS BACKEND API - ONLINE',
