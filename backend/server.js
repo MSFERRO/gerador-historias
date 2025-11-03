@@ -10,31 +10,21 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// ✅ MIDDLEWARE PARA UTF-8 E HEADERS
-app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
-});
-
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'Backend Sinapsys - Deploy Funcionando!',
-    version: '2.1',
+    message: 'Backend Sinapsys - Versão Profissional',
+    version: '3.0',
     timestamp: new Date().toISOString()
   });
 });
 
-// Rota principal da API - VERSÃO CORRIGIDA
+// Rota principal - VERSÃO TEXTO LIMPO
 app.post('/api/generate-story', async (req, res) => {
   try {
     const { projectTitle, clientName, description } = req.body;
 
-    // ✅ DEFINIR descLower NO ESCOPO PRINCIPAL
     const descLower = description.toLowerCase();
 
     if (!projectTitle || !clientName || !description) {
@@ -49,7 +39,7 @@ app.post('/api/generate-story', async (req, res) => {
       });
     }
 
-    // Funções de processamento SIMPLIFICADAS
+    // Funções de processamento
     const extractRole = () => {
       const match = description.match(/como\s+([^,.\n]+)/i);
       return match ? match[1].trim() : 'analista';
@@ -68,65 +58,76 @@ app.post('/api/generate-story', async (req, res) => {
       return description.split(/[.!?]/)[0] || description;
     };
 
-    // ✅ Gerar história PROFISSIONAL mas SIMPLES
-    const professionalStory = `
-# ${projectTitle.toUpperCase()}
-**Cliente:** ${clientName}
-**Data:** ${new Date().toLocaleDateString('pt-BR')}
-**Status:** ��� EM DESENVOLVIMENTO
+    // ✅ TEXTO 100% LIMPO - SEM EMOJIS, SEM ASTERISCOS
+    const cleanStory = `
+SISTEMA: ${projectTitle.toUpperCase()}
+CLIENTE: ${clientName}
+DATA: ${new Date().toLocaleDateString('pt-BR')}
+STATUS: EM DESENVOLVIMENTO
 
----
+================================================================================
 
-## ��� HISTÓRIA DE USUÁRIO
+HISTÓRIA DE USUÁRIO
 
-**COMO** ${extractRole()}
-**QUERO** ${extractMainGoal()}
-**PARA** melhorar a eficiência operacional
+COMO: ${extractRole()}
+QUERO: ${extractMainGoal()}
+PARA: melhorar a eficiência operacional
 
----
+================================================================================
 
-## ��� DESCRIÇÃO COMPLETA
+DESCRIÇÃO DETALHADA
 
 ${description}
 
----
+================================================================================
 
-## ✅ CRITÉRIOS DE ACEITAÇÃO
+CRITÉRIOS DE ACEITAÇÃO
 
-${descLower.includes('documento') || descLower.includes('pdf') ? '- ✅ **Upload de múltiplos formatos de documento**\n' : ''}
-${descLower.includes('extrair') || descLower.includes('informação') ? '- ✅ **Extração automática de campos-chave**\n' : ''}
-${descLower.includes('excel') || descLower.includes('relatório') ? '- ✅ **Geração de relatórios Excel**\n' : ''}
-${descLower.includes('link') || descLower.includes('hyperlink') ? '- ✅ **Hiperlinks para documentos originais**\n' : ''}
-- ✅ **Interface intuitiva e responsiva**
-- ✅ **Processamento robusto e seguro**
+${descLower.includes('documento') || descLower.includes('pdf') ? '- Upload de múltiplos formatos de documento\n' : ''}
+${descLower.includes('extrair') || descLower.includes('informação') ? '- Extração automática de campos-chave\n' : ''}
+${descLower.includes('excel') || descLower.includes('relatório') ? '- Geração de relatórios Excel\n' : ''}
+${descLower.includes('link') || descLower.includes('hyperlink') ? '- Hiperlinks para documentos originais\n' : ''}
+- Interface intuitiva e responsiva
+- Processamento robusto e seguro
+- Validação de dados integrada
+- Segurança implementada em todas as camadas
 
----
+================================================================================
 
-## ���️ REQUISITOS TÉCNICOS
+REQUISITOS TÉCNICOS
 
-- ��� Backend Node.js/Express
-- ��� Processamento de documentos
-- ��� Interface moderna
-- ��� Segurança implementada
+- Backend Node.js/Express
+- Processamento de documentos inteligente
+- Interface React responsiva
+- API RESTful
+- Armazenamento seguro de dados
+- Validação e tratamento de erros
 
----
+================================================================================
 
-*Documento gerado por Sinapsys Tecnologia - v2.1*
-*${new Date().toLocaleString('pt-BR')}*
+INFORMAÇÕES DO PROJETO
+
+- Data de geração: ${new Date().toLocaleString('pt-BR')}
+- Caracteres processados: ${description.length}
+- Palavras processadas: ${Math.ceil(description.length / 6)}
+
+================================================================================
+
+Documento gerado automaticamente
+${new Date().toLocaleString('pt-BR')}
     `.trim();
 
-    // ✅ HEADER UTF-8 EXPLÍCITO
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.json({
       success: true,
-      story: professionalStory,
+      story: cleanStory,
       metadata: {
         projectTitle,
         clientName,
         generatedAt: new Date().toISOString(),
         descriptionLength: description.length,
         processed: true,
-        version: '2.1'
+        version: '3.0'
       }
     });
 
@@ -139,39 +140,16 @@ ${descLower.includes('link') || descLower.includes('hyperlink') ? '- ✅ **Hiper
   }
 });
 
-// ✅ CORREÇÃO: REMOVER ROTA CURINGA PROBLEMÁTICA
-// Serve frontend se estiver na mesma aplicação (APENAS para produção)
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-  
-  // ✅ ROTA CORRIGIDA: SEM '*' APENAS PARA FRONTEND
-  app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
-  });
-}
-
-// ✅ 404 handler CORRIGIDO (SEM '*')
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     error: 'Rota não encontrada',
-    path: req.originalUrl,
-    timestamp: new Date().toISOString(),
-    availableRoutes: ['GET /api/health', 'POST /api/generate-story']
-  });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Error:', error);
-  res.status(500).json({
-    error: 'Erro interno do servidor',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Contate o suporte'
+    path: req.originalUrl
   });
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log('��� BACKEND SINAPSYS - VERSÃO 2.1 CORRIGIDA');
+  console.log('��� BACKEND SINAPSYS - VERSÃO PROFISSIONAL 3.0');
   console.log(`��� Porta: ${PORT}`);
-  console.log(`✅ Health: http://localhost:${PORT}/api/health`);
 });
