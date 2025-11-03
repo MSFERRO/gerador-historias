@@ -4,7 +4,15 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000; // ✅ CORRIGIDO para porta do Render
+
+// ✅ DEBUG DETALHADO NO INÍCIO
+console.log('\n🔍 DEBUG INICIAL DO RENDER:');
+console.log('   - PORT:', process.env.PORT);
+console.log('   - NODE_ENV:', process.env.NODE_ENV);
+console.log('   - GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
+console.log('   - GROQ_API_KEY preview:', process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.substring(0, 15) + '...' : 'N/A');
+console.log('');
 
 // Middlewares
 app.use(cors());
@@ -17,25 +25,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ CONFIGURAÇÃO GROQ IA
+// ✅ CONFIGURAÇÃO GROQ IA COM DEBUG
 let groq;
+console.log('🚀 CONFIGURANDO GROQ IA...');
+
 try {
-  if (process.env.GROQ_API_KEY) {
+  if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.startsWith('gsk_')) {
+    console.log('   - API Key válida detectada');
     groq = require('groq-sdk');
-    groq = new groq({ apiKey: process.env.GROQ_API_KEY });
-    console.log('🚀 Groq IA Configurado - Modo IA Ativo');
+    groq = new groq({ 
+      apiKey: process.env.GROQ_API_KEY
+    });
+    console.log('   ✅ Groq IA Configurado com Sucesso');
+    console.log('   🎯 Modo: IA Groq Ativa');
   } else {
-    console.log('⚠️  Groq API Key não encontrada - Modo Inteligente Ativo');
+    console.log('   ❌ API Key inválida ou não encontrada');
+    console.log('   ⚠️  Modo: Fallback Inteligente');
   }
 } catch (error) {
-  console.log('❌ Erro ao carregar Groq SDK - Modo Inteligente Ativo');
+  console.log('   💥 Erro na configuração Groq:', error.message);
+  console.log('   🔄 Modo: Fallback Inteligente');
 }
-
-// ✅ DEBUG DA CONFIGURAÇÃO GROQ
-console.log('🔧 Debug Groq Config:');
-console.log('   - GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
-console.log('   - Groq instance:', !!groq);
-console.log('   - Node Environment:', process.env.NODE_ENV);
 
 // ✅ FUNÇÃO IA COM GROQ - VERSÃO PROFISSIONAL
 async function generateWithAI(projectTitle, clientName, description) {
@@ -457,6 +467,70 @@ VERSÃO 4.0 - ANÁLISE CONTEXTUAL AVANÇADA
   `.trim();
 }
 
+// ✅ ROTAS DE DEBUG E TESTE
+app.get('/api/debug', (req, res) => {
+  res.json({
+    status: 'OK',
+    groq: {
+      configured: !!groq,
+      apiKeyExists: !!process.env.GROQ_API_KEY,
+      apiKeyStartsWithGsk: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.startsWith('gsk_') : false,
+      apiKeyLength: process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.length : 0
+    },
+    environment: {
+      nodeEnv: process.env.NODE_ENV,
+      port: process.env.PORT,
+      actualPort: PORT
+    },
+    timestamp: new Date().toISOString(),
+    version: '4.0'
+  });
+});
+
+// ✅ TESTE DE CONEXÃO GROQ
+app.get('/api/test-groq', async (req, res) => {
+  try {
+    if (!groq) {
+      return res.json({
+        status: 'GROQ_NOT_READY',
+        message: 'Groq não está configurado',
+        reason: 'API key missing or invalid'
+      });
+    }
+
+    // Teste simples com a Groq
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "user",
+          content: "Responda apenas com a palavra 'FUNCIONANDO' em letras maiúsculas"
+        }
+      ],
+      model: "llama3-8b-8192",
+      max_tokens: 10,
+      temperature: 0.1
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    
+    res.json({
+      status: 'GROQ_WORKING',
+      message: 'IA Groq está funcionando!',
+      testResponse: response,
+      model: 'llama3-8b-8192',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    res.json({
+      status: 'GROQ_ERROR',
+      message: 'Erro na Groq',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'production' ? 'Hidden in production' : error.stack
+    });
+  }
+});
+
 // ✅ HEALTH CHECK
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -467,7 +541,8 @@ app.get('/api/health', (req, res) => {
     hasAI: !!groq,
     mode: groq ? 'IA Groq Ativa' : 'Processamento Inteligente',
     encoding: 'UTF-8',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
   });
 });
 
@@ -490,7 +565,8 @@ app.post('/api/generate-story', async (req, res) => {
     console.log(`📝 Nova solicitação recebida:`, {
       projectTitle,
       clientName,
-      descriptionLength: description?.length
+      descriptionLength: description?.length,
+      groqAvailable: !!groq
     });
 
     // Validações
@@ -513,14 +589,14 @@ app.post('/api/generate-story', async (req, res) => {
       });
     }
 
-    console.log(`🎯 Processando: ${projectTitle} - ${clientName}`);
+    console.log(`🎯 Processando: ${projectTitle} - ${clientName} | Groq: ${groq ? 'SIM' : 'NÃO'}`);
     
     // ✅ GERAR COM IA GROQ OU FALLBACK
     const startTime = Date.now();
     const story = await generateWithAI(projectTitle, clientName, description);
     const processingTime = Date.now() - startTime;
 
-    console.log(`✅ História gerada em ${processingTime}ms`);
+    console.log(`✅ História gerada em ${processingTime}ms | Modo: ${groq ? 'IA Groq' : 'Fallback'}`);
 
     res.json({
       success: true,
@@ -579,6 +655,8 @@ app.use((req, res) => {
       timestamp: new Date().toISOString(),
       availableRoutes: [
         'GET /api/health',
+        'GET /api/debug',
+        'GET /api/test-groq',
         'POST /api/generate-story',
         'POST /api/test'
       ],
@@ -614,11 +692,14 @@ app.use((error, req, res, next) => {
 
 // ✅ INICIAR SERVIDOR
 app.listen(PORT, () => {
+  console.log('\n' + '='.repeat(60));
   console.log('🚀 BACKEND SINAPSYS - VERSÃO 4.0 INICIADO');
   console.log(`📍 Porta: ${PORT}`);
   console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🤖 Modo: ${groq ? 'IA GROQ ATIVA 🎯' : 'PROCESSAMENTO INTELIGENTE ⚡'}`);
-  console.log(`📊 Health: http://localhost:${PORT}/api/health`);
+  console.log(`📊 Health: https://seu-backend.onrender.com/api/health`);
+  console.log(`🔍 Debug: https://seu-backend.onrender.com/api/debug`);
+  console.log(`🧪 Teste Groq: https://seu-backend.onrender.com/api/test-groq`);
   console.log(`⚡ Versão: 4.0 - IA Groq Integrada`);
-  console.log('='.repeat(60));
+  console.log('='.repeat(60) + '\n');
 });
