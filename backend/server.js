@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 10000;
 // Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
+app.use(express.static('public')); // Serve arquivos da pasta public
 
 // ✅ CONFIGURAÇÃO OPENAI
 console.log('\n🔧 CONFIGURANDO OPENAI GPT-4o-mini...');
@@ -54,7 +54,7 @@ if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) 
 
 console.log('📊 Status AI:', aiStatus);
 
-// ✅ FUNÇÃO IA COM FORMATAÇÃO MELHORADA
+// ✅ FUNÇÃO IA COM FORMATAÇÃO ESTRITAMENTE CONTROLADA
 async function generateWithAI(projectTitle, clientName, description) {
     console.log(`\n🤖 SOLICITANDO IA... (Status: ${aiStatus})`);
     
@@ -66,63 +66,82 @@ async function generateWithAI(projectTitle, clientName, description) {
     try {
         console.log('🚀 Chamando OpenAI...');
         
-        const prompt = `Como Product Owner Sênior, gere uma história de usuário completa em português no formato EXATO abaixo:
+        const prompt = `Como Product Owner Sênior, gere uma história de usuário completa em português no formato EXATO abaixo.
+
+IMPORTANTE: USE EXATAMENTE ESTE FORMATO COM QUEBRAS DE LINHA DUPLAS ENTRE SEÇÕES:
+
+HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}  
+Cliente: ${clientName}  
+Data: ${new Date().toLocaleDateString('pt-BR')}  
+Status: Em Desenvolvimento  
+
+
+HISTÓRIA DE USUÁRIO  
+COMO: [persona específica]  
+QUERO: [objetivo claro e detalhado]  
+PARA: [benefício mensurável]  
+
+
+DESCRIÇÃO DETALHADA  
+[Descrição completa em 2-3 parágrafos bem estruturados]  
+
+
+CRITÉRIOS DE ACEITAÇÃO  
+• [Critério 1 - funcionalidade principal]  
+• [Critério 2 - aspectos técnicos]  
+• [Critério 3 - experiência do usuário]  
+• [Critério 4 - segurança e proteção]  
+• [Critério 5 - performance e velocidade]  
+
+
+REQUISITOS TÉCNICOS  
+• Backend Node.js/Express  
+• Interface React responsiva  
+• API RESTful  
+• Armazenamento seguro de dados  
+• Validação e tratamento de erros  
+• Processamento inteligente de documentos  
+
+
+CENÁRIOS DE TESTE  
+• [Cenário 1 BDD formatado]  
+• [Cenário 2 BDD formatado]  
+• [Cenário 3 BDD formatado]  
+
+
+REQUISITOS NÃO FUNCIONAIS  
+• Performance: [requisitos de desempenho]  
+• Segurança: [medidas de segurança]  
+• Usabilidade: [facilidade de uso]  
+• Confiabilidade: [disponibilidade e estabilidade]
 
 PROJETO: ${projectTitle}
 CLIENTE: ${clientName}
 DESCRIÇÃO: ${description}
 
-**FORMATO EXATO - USE DUAS QUEBRAS DE LINHA ENTRE SEÇÕES:**
-
-HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}
-Cliente: ${clientName}
-Data: ${new Date().toLocaleDateString('pt-BR')}
-Status: Em Desenvolvimento
-
-HISTÓRIA DE USUÁRIO
-COMO: [persona específica]
-QUERO: [objetivo claro e detalhado]
-PARA: [benefício mensurável]
-
-DESCRIÇÃO DETALHADA
-[Descrição completa dos requisitos em parágrafos bem estruturados]
-
-CRITÉRIOS DE ACEITAÇÃO
-• [Critério 1 - funcionalidade principal]
-• [Critério 2 - aspectos técnicos] 
-• [Critério 3 - experiência do usuário]
-• [Critério 4 - segurança e proteção]
-• [Critério 5 - performance e velocidade]
-
-REQUISITOS TÉCNICOS
-• Backend Node.js/Express
-• Interface React responsiva
-• API RESTful
-• Armazenamento seguro de dados
-• Validação e tratamento de erros
-• Processamento inteligente de documentos
-
-CENÁRIOS DE TESTE
-[Cenários BDD formatados com Given-When-Then]
-
-REQUISITOS NÃO FUNCIONAIS
-• Performance: [requisitos de desempenho]
-• Segurança: [medidas de segurança]
-• Usabilidade: [facilidade de uso]
-• Confiabilidade: [disponibilidade e estabilidade]
-
 **INSTRUÇÕES CRÍTICAS:**
-- USE \\n\\n (DUAS QUEBRAS DE LINHA) ENTRE CADA SEÇÃO PRINCIPAL
-- Use bullets (•) para listas, não asteriscos
-- Formatação limpa e profissional
-- Não mencione OpenAI, GPT, IA ou versões do sistema
-- Seja específico e detalhado`;
+- USE EXATAMENTE 2 QUEBRAS DE LINHA (linha vazia) entre cada seção principal
+- USE bullets (•) para todas as listas
+- NÃO use markdown (**negrito**), apenas texto puro
+- Formate datas no padrão DD/MM/AAAA
+- Seja específico e detalhado
+- Não mencione OpenAI, GPT ou IA`;
 
         const completion = await openai.chat.completions.create({
             messages: [
                 {
                     role: "system",
-                    content: "Você é um Product Owner sênior especializado em documentação de requisitos. Gere histórias de usuário profissionais em português com formatação limpa para documentos Word. Use DUAS quebras de linha entre seções. Não mencione OpenAI, GPT, IA ou versões do sistema."
+                    content: `Você é um Product Owner sênior especializado em documentação de requisitos. 
+                    Gere histórias de usuário profissionais em português seguindo EXATAMENTE o formato solicitado.
+                    
+                    REGRAS ESTRITAS DE FORMATAÇÃO:
+                    - Use DUAS quebras de linha (\\n\\n) entre cada seção principal
+                    - Use bullets (•) para listas, NUNCA asteriscos
+                    - Formate datas como DD/MM/AAAA
+                    - Não use markdown, apenas texto puro
+                    - Mantenha o formato exato com espaçamento consistente
+                    
+                    NUNCA mencione OpenAI, GPT, IA ou versões do sistema.`
                 },
                 {
                     role: "user",
@@ -139,12 +158,8 @@ REQUISITOS NÃO FUNCIONAIS
         if (aiResponse && aiResponse.length > 100) {
             console.log('✅ OpenAI respondeu!', aiResponse.length, 'caracteres');
             
-            // Limpar e formatar resposta
-            const cleanResponse = aiResponse
-                .replace(/\*\*/g, '') // Remove markdown bold
-                .replace(/\*/g, '•')  // Substitui asteriscos por bullets
-                .trim();
-                
+            // Limpar e padronizar a resposta
+            const cleanResponse = cleanAndFormatResponse(aiResponse);
             return cleanResponse + `\n\nDocumento gerado pela aplicação - Sinapsys Tecnologia\n${new Date().toLocaleString('pt-BR')}`;
         }
         
@@ -156,7 +171,18 @@ REQUISITOS NÃO FUNCIONAIS
     }
 }
 
-// ✅ FALLBACK ATUALIZADO
+// ✅ FUNÇÃO PARA LIMPAR E PADRONIZAR A RESPOSTA
+function cleanAndFormatResponse(text) {
+    return text
+        .replace(/\*\*/g, '') // Remove negrito markdown
+        .replace(/\*/g, '•')  // Substitui asteriscos por bullets
+        .replace(/- /g, '• ') // Substitui hífens por bullets
+        .replace(/\n{3,}/g, '\n\n') // Normaliza múltiplas quebras de linha
+        .replace(/^HISTÓRIA DE USUÁRIO - .*\nCliente: .*\nData: .*\nStatus: .*\n\nHISTÓRIA DE USUÁRIO -/g, 'HISTÓRIA DE USUÁRIO -')
+        .trim();
+}
+
+// ✅ FALLBACK ATUALIZADO COM FORMATAÇÃO CORRETA
 function generateFallbackStory(projectTitle, clientName, description) {
     const extractRole = () => {
         if (description.toLowerCase().includes('como gerente')) return 'Gerente de Projetos';
@@ -171,43 +197,49 @@ function generateFallbackStory(projectTitle, clientName, description) {
         return match ? match[1].trim() : description.substring(0, 100) + '...';
     };
 
-    return `HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}
-Cliente: ${clientName}
-Data: ${new Date().toLocaleDateString('pt-BR')}
-Status: Em Desenvolvimento
+    return `HISTÓRIA DE USUÁRIO - ${projectTitle.toUpperCase()}  
+Cliente: ${clientName}  
+Data: ${new Date().toLocaleDateString('pt-BR')}  
+Status: Em Desenvolvimento  
 
-HISTÓRIA DE USUÁRIO
-COMO: ${extractRole()}
-QUERO: ${extractGoal()}
-PARA: melhorar eficiência operacional e otimizar processos
 
-DESCRIÇÃO DETALHADA
-${description}
+HISTÓRIA DE USUÁRIO  
+COMO: ${extractRole()}  
+QUERO: ${extractGoal()}  
+PARA: melhorar eficiência operacional e otimizar processos  
 
-CRITÉRIOS DE ACEITAÇÃO
-• Funcionalidade implementada conforme especificado
-• Interface intuitiva e responsiva
-• Processamento robusto e seguro
-• Performance adequada para o uso
-• Documentação técnica disponível
 
-REQUISITOS TÉCNICOS
-• Backend Node.js/Express
-• Processamento de documentos inteligente
-• Interface React responsiva
-• API RESTful
-• Armazenamento seguro de dados
-• Validação e tratamento de erros
+DESCRIÇÃO DETALHADA  
+${description}  
 
-CENÁRIOS DE TESTE
-• Cenário principal: fluxo básico da funcionalidade
-• Cenário alternativo: situações excepcionais
-• Cenário de erro: tratamento de exceções
 
-REQUISITOS NÃO FUNCIONAIS
-• Performance: tempo de resposta adequado
-• Segurança: proteção de dados e acesso
-• Usabilidade: interface clara e intuitiva
+CRITÉRIOS DE ACEITAÇÃO  
+• Funcionalidade implementada conforme especificado  
+• Interface intuitiva e responsiva  
+• Processamento robusto e seguro  
+• Performance adequada para o uso  
+• Documentação técnica disponível  
+
+
+REQUISITOS TÉCNICOS  
+• Backend Node.js/Express  
+• Processamento de documentos inteligente  
+• Interface React responsiva  
+• API RESTful  
+• Armazenamento seguro de dados  
+• Validação e tratamento de erros  
+
+
+CENÁRIOS DE TESTE  
+• Cenário principal: fluxo básico da funcionalidade  
+• Cenário alternativo: situações excepcionais  
+• Cenário de erro: tratamento de exceções  
+
+
+REQUISITOS NÃO FUNCIONAIS  
+• Performance: tempo de resposta adequado  
+• Segurança: proteção de dados e acesso  
+• Usabilidade: interface clara e intuitiva  
 • Confiabilidade: disponibilidade do sistema
 
 Documento gerado pela aplicação - Sinapsys Tecnologia
@@ -310,7 +342,12 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
-// ✅ ROTA PARA DOWNLOAD DE WORD - CORRIGIDA
+// ✅ ROTA PARA SERVIR A LOGO
+app.get('/logo-sinapsys2.png', (req, res) => {
+    res.sendFile(__dirname + '/public/logo-sinapsys2.png');
+});
+
+// ✅ ROTA PARA DOWNLOAD DE WORD - USANDO LOGO DA PASTA PUBLIC
 app.post('/api/generate-word-document', async (req, res) => {
     try {
         const { projectTitle, clientName, storyContent } = req.body;
@@ -322,8 +359,8 @@ app.post('/api/generate-word-document', async (req, res) => {
             });
         }
 
-        // Base64 da logo Sinapsys (SVG)
-        const logoBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTUwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMDA0RjlGIi8+Cjx0ZXh0IHg9Ijc1IiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+U0lOQVBTWVM8L3RleHQ+Cjx0ZXh0IHg9Ijc1IiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVjbm9sb2dpYTwvdGV4dD4KPC9zdmc+';
+        // URL da logo na pasta public
+        const logoUrl = `https://${req.get('host')}/logo-sinapsys2.png`;
 
         const wordContent = `<!DOCTYPE html>
 <html>
@@ -333,7 +370,7 @@ app.post('/api/generate-word-document', async (req, res) => {
     <style>
         body, html {
             margin: 0;
-            padding: 20px;
+            padding: 25px;
             font-family: "Arial", sans-serif;
             line-height: 1.6;
             color: #000000;
@@ -375,32 +412,9 @@ app.post('/api/generate-word-document', async (req, res) => {
         .content {
             margin: 25px 0;
             font-size: 12px;
-        }
-        
-        .story-section {
-            margin-bottom: 25px;
-            page-break-inside: avoid;
-        }
-        
-        .section-title {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 14px;
-            border-bottom: 1px solid #3498db;
-            padding-bottom: 5px;
-        }
-        
-        .section-content {
-            margin-left: 15px;
             white-space: pre-wrap;
             font-family: "Arial", sans-serif;
             line-height: 1.5;
-        }
-        
-        .criteria-list, .requirements-list {
-            margin: 10px 0;
-            padding-left: 20px;
         }
         
         .footer {
@@ -420,7 +434,7 @@ app.post('/api/generate-word-document', async (req, res) => {
 <body>
     <div class="header">
         <div class="logo-container">
-            <img src="${logoBase64}" alt="Sinapsys Tecnologia" class="logo">
+            <img src="${logoUrl}" alt="Sinapsys Tecnologia" class="logo">
         </div>
         <h1>HISTÓRIA DE USUÁRIO</h1>
         <div class="project-info">
@@ -432,7 +446,7 @@ app.post('/api/generate-word-document', async (req, res) => {
     </div>
     
     <div class="content">
-        ${formatStoryForWord(storyContent)}
+        ${storyContent.replace(/\n/g, '<br>')}
     </div>
     
     <div class="footer">
@@ -457,52 +471,6 @@ app.post('/api/generate-word-document', async (req, res) => {
         });
     }
 });
-
-// ✅ FUNÇÃO AUXILIAR PARA FORMATAR HISTÓRIA PARA WORD
-function formatStoryForWord(storyText) {
-    const sections = storyText.split('\n\n');
-    let html = '';
-    
-    sections.forEach(section => {
-        if (section.trim()) {
-            const lines = section.split('\n');
-            const firstLine = lines[0].trim();
-            
-            // Pular seções já tratadas no cabeçalho
-            if (firstLine.includes('HISTÓRIA DE USUÁRIO -') || 
-                firstLine.includes('Cliente:') || 
-                firstLine.includes('Data:') || 
-                firstLine.includes('Status:') ||
-                firstLine.includes('Documento gerado')) {
-                return;
-            }
-            
-            // Identificar seções principais
-            if (firstLine.includes('HISTÓRIA DE USUÁRIO') ||
-                firstLine.includes('DESCRIÇÃO DETALHADA') ||
-                firstLine.includes('CRITÉRIOS DE ACEITAÇÃO') ||
-                firstLine.includes('REQUISITOS TÉCNICOS') ||
-                firstLine.includes('CENÁRIOS DE TESTE') ||
-                firstLine.includes('REQUISITOS NÃO FUNCIONAIS')) {
-                
-                const content = lines.slice(1).join('<br>').replace(/\•/g, '•');
-                html += `
-                <div class="story-section">
-                    <div class="section-title">${firstLine}</div>
-                    <div class="section-content">${content}</div>
-                </div>`;
-            } else {
-                // Seção sem título específico
-                html += `
-                <div class="story-section">
-                    <div class="section-content">${section.replace(/\n/g, '<br>').replace(/\•/g, '•')}</div>
-                </div>`;
-            }
-        }
-    });
-    
-    return html;
-}
 
 // ✅ ROTA RAIZ
 app.get('/', (req, res) => {
