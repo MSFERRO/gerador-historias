@@ -31,10 +31,17 @@ try {
   console.log('❌ Erro ao carregar Groq SDK - Modo Inteligente Ativo');
 }
 
+// ✅ DEBUG DA CONFIGURAÇÃO GROQ
+console.log('🔧 Debug Groq Config:');
+console.log('   - GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY);
+console.log('   - Groq instance:', !!groq);
+console.log('   - Node Environment:', process.env.NODE_ENV);
+
 // ✅ FUNÇÃO IA COM GROQ - VERSÃO PROFISSIONAL
 async function generateWithAI(projectTitle, clientName, description) {
   // Se não tiver Groq configurado, usa fallback
   if (!groq) {
+    console.log('🔄 Usando fallback inteligente (Groq não disponível)');
     return await generateFallbackStory(projectTitle, clientName, description);
   }
 
@@ -87,6 +94,7 @@ Destaque informações importantes.
 Use português brasileiro claro e técnico.
     `;
 
+    console.log('🤖 Chamando Groq IA...');
     const completion = await groq.chat.completions.create({
       messages: [
         {
@@ -113,10 +121,12 @@ Use português brasileiro claro e técnico.
       throw new Error('Resposta da IA muito curta');
     }
 
+    console.log('✅ Resposta da IA recebida:', aiResponse.length, 'caracteres');
     return formatAIResponse(aiResponse, projectTitle, clientName);
 
   } catch (error) {
     console.error('❌ Erro na IA Groq:', error.message);
+    console.log('🔄 Alternando para fallback inteligente...');
     return await generateFallbackStory(projectTitle, clientName, description);
   }
 }
@@ -162,13 +172,34 @@ VERSÃO 4.0 - PROCESSAMENTO POR INTELIGÊNCIA ARTIFICIAL
   `.trim();
 }
 
-// ✅ FUNÇÃO FALLBACK INTELIGENTE
+// ✅ FUNÇÃO FALLBACK INTELIGENTE - VERSÃO MELHORADA
 async function generateFallbackStory(projectTitle, clientName, description) {
   const extractRole = () => {
+    const desc = description.toLowerCase();
+    
+    // Padrões mais específicos para detectar o papel
+    if (desc.includes('como gerente') || desc.includes('gerente de')) {
+      const match = description.match(/como\s+(gerente\s+[^,.\n]+)/i);
+      return match ? match[1] : 'Gerente de Projetos';
+    }
+    
+    if (desc.includes('como usuário') || desc.includes('usuário')) {
+      return 'Usuário do Sistema';
+    }
+    
+    if (desc.includes('como admin') || desc.includes('administrador')) {
+      return 'Administrador do Sistema';
+    }
+    
+    if (desc.includes('como analista') || desc.includes('analista de')) {
+      const match = description.match(/como\s+(analista\s+[^,.\n]+)/i);
+      return match ? match[1] : 'Analista de Sistemas';
+    }
+    
+    // Padrão genérico
     const patterns = [
-      /como\s+(um|uma)?\s+([^,.\n]+)/i,
-      /como\s+([^,.\n]+)/i,
-      /sou\s+([^,.\n]+)/i,
+      /como\s+(um|uma)?\s*([^,.\n]+?)(?=\s*,|\s+quero|\s+eu|\s+para|\.|$)/i,
+      /sou\s+([^,.\n]+?)(?=\s*,|\s+e|\s+\.|$)/i,
       /atuo\s+como\s+([^,.\n]+)/i
     ];
     
@@ -177,47 +208,86 @@ async function generateFallbackStory(projectTitle, clientName, description) {
       if (match && match[2]) return match[2].trim();
       if (match && match[1]) return match[1].trim();
     }
-    return 'Analista de Negócios';
+    
+    return 'Usuário do Sistema';
   };
 
   const extractMainGoal = () => {
+    // Remove a parte do "COMO" para evitar repetição
+    let cleanDesc = description.replace(/como\s+[^,]+,\s*/i, '');
+    
     const patterns = [
-      /eu\s+gostaria\s+de\s+([^.!?]+)/i,
-      /eu\s+quero\s+([^.!?]+)/i,
-      /eu\s+preciso\s+([^.!?]+)/i,
-      /desejo\s+([^.!?]+)/i,
-      /objetivo[^.!?]*?([^.!?]+)/i,
-      /necessito\s+([^.!?]+)/i
+      /quero\s+([^.!?]+?)(?=\s*para\s+|\s*de\s+forma\s+|\s*\.|\s*$)/i,
+      /desejo\s+([^.!?]+?)(?=\s*para\s+|\s*\.|\s*$)/i,
+      /preciso\s+([^.!?]+?)(?=\s*para\s+|\s*\.|\s*$)/i,
+      /objetivo[^.!?]*?([^.!?]+?)(?=\s*para\s+|\s*\.|\s*$)/i,
+      /necessito\s+([^.!?]+?)(?=\s*para\s+|\s*\.|\s*$)/i
     ];
     
     for (const pattern of patterns) {
-      const match = description.match(pattern);
+      const match = cleanDesc.match(pattern);
       if (match && match[1]) {
         let result = match[1].trim();
-        result = result.replace(/,\s*(para|que|de|a|o)\s*$/i, '').trim();
-        if (result.length > 5) return result;
+        // Limpa caracteres finais indesejados
+        result = result.replace(/[,\s]*$/g, '').trim();
+        if (result.length > 10 && !result.includes('Como')) {
+          return result;
+        }
       }
     }
     
-    const sentences = description.split(/[.!?]+/).filter(s => s.trim().length > 10);
-    return sentences[0]?.substring(0, 150) || description.substring(0, 100) + '...';
+    // Fallback: pega a primeira frase significativa
+    const sentences = cleanDesc.split(/[.!?]+/).filter(s => {
+      const trimmed = s.trim();
+      return trimmed.length > 20 && !trimmed.toLowerCase().includes('como');
+    });
+    
+    if (sentences.length > 0) {
+      return sentences[0].substring(0, 120).trim() + '...';
+    }
+    
+    return 'realizar operações no sistema de forma eficiente';
   };
 
   const extractBenefit = () => {
     const patterns = [
-      /para\s+([^.!?]+)/i,
+      /para\s+([^.!?]+?)(?=\s*\.|\s*$|\s*Também)/i,
       /de\s+forma\s+que\s+([^.!?]+)/i,
       /com\s+o\s+objetivo\s+de\s+([^.!?]+)/i,
       /visando\s+([^.!?]+)/i,
-      /a\s+fim\s+de\s+([^.!?]+)/i
+      /a\s+fim\s+de\s+([^.!?]+)/i,
+      /de\s+modo\s+a\s+([^.!?]+)/i
     ];
     
     for (const pattern of patterns) {
       const match = description.match(pattern);
       if (match && match[1]) {
-        return match[1].trim();
+        let benefit = match[1].trim();
+        benefit = benefit.replace(/[,\s]*$/g, '').trim();
+        if (benefit.length > 5) {
+          return benefit;
+        }
       }
     }
+    
+    // Benefícios baseados no contexto
+    const descLower = description.toLowerCase();
+    if (descLower.includes('relatóri') || descLower.includes('dashboard')) {
+      return 'tomar decisões baseadas em dados atualizados';
+    }
+    if (descLower.includes('login') || descLower.includes('segurança')) {
+      return 'proteger informações sensíveis do sistema';
+    }
+    if (descLower.includes('cadastro') || descLower.includes('registro')) {
+      return 'manter os dados do sistema organizados e atualizados';
+    }
+    if (descLower.includes('tempo real') || descLower.includes('monitoramento')) {
+      return 'acompanhar o andamento das atividades instantaneamente';
+    }
+    if (descLower.includes('git') || descLower.includes('commit')) {
+      return 'rastrear o desenvolvimento e associar código às funcionalidades';
+    }
+    
     return 'otimizar processos e melhorar a eficiência operacional';
   };
 
@@ -226,41 +296,53 @@ async function generateFallbackStory(projectTitle, clientName, description) {
   const generateCriteria = () => {
     const criteria = [];
     
-    // Critérios baseados no contexto
-    if (descLower.includes('login') || descLower.includes('autenticação') || descLower.includes('senha')) {
-      criteria.push('✅ Sistema deve validar credenciais de forma segura');
-      criteria.push('✅ Deve implementar timeout de sessão');
-      criteria.push('✅ Precisa ter recuperação de senha');
-      criteria.push('✅ Deve registrar tentativas de acesso');
+    // Critérios baseados no contexto específico
+    if (descLower.includes('sprint') || descLower.includes('tarefa') || descLower.includes('scrum')) {
+      criteria.push('✅ Sistema deve permitir criação de sprints com datas de início e fim');
+      criteria.push('✅ Deve possibilitar atribuição de tarefas aos membros da equipe');
+      criteria.push('✅ Deve mostrar progresso em tempo real com indicadores visuais');
+      criteria.push('✅ Deve calcular velocity e burndown automaticamente');
     }
     
-    if (descLower.includes('relatório') || descLower.includes('relatorio') || descLower.includes('pdf') || descLower.includes('excel')) {
-      criteria.push('✅ Relatório deve conter dados consistentes e atualizados');
-      criteria.push('✅ Exportação em múltiplos formatos (PDF, Excel)');
-      criteria.push('✅ Filtros dinâmicos e personalizáveis');
-      criteria.push('✅ Performance otimizada para grandes volumes');
+    if (descLower.includes('perfil') || descLower.includes('admin') || descLower.includes('desenvolvedor')) {
+      criteria.push('✅ Controle de acesso por perfis (admin, scrum master, desenvolvedor)');
+      criteria.push('✅ Permissões específicas para cada tipo de usuário');
+      criteria.push('✅ Interface adaptável conforme o perfil logado');
     }
     
-    if (descLower.includes('cadastro') || descLower.includes('registro') || descLower.includes('incluir')) {
-      criteria.push('✅ Validação de campos obrigatórios');
-      criteria.push('✅ Prevenção de duplicidade');
-      criteria.push('✅ Confirmação de operação bem-sucedida');
-      criteria.push('✅ Mensagens de erro claras e objetivas');
+    if (descLower.includes('relatóri') || descLower.includes('chart') || descLower.includes('velocity')) {
+      criteria.push('✅ Geração de relatórios de velocity e burndown charts');
+      criteria.push('✅ Exportação em múltiplos formatos (PDF, Excel, PNG)');
+      criteria.push('✅ Filtros dinâmicos por período, equipe e projetos');
+      criteria.push('✅ Atualização automática dos dados em tempo real');
     }
     
-    if (descLower.includes('consulta') || descLower.includes('buscar') || descLower.includes('pesquisar')) {
-      criteria.push('✅ Interface de busca intuitiva e rápida');
-      criteria.push('✅ Filtros avançados e combináveis');
-      criteria.push('✅ Paginação para grandes resultados');
-      criteria.push('✅ Ordenação por múltiplos critérios');
+    if (descLower.includes('notificaç') || descLower.includes('email') || descLower.includes('alerta')) {
+      criteria.push('✅ Notificações automáticas por email para conclusão de tarefas');
+      criteria.push('✅ Alertas para tarefas próximas do prazo ou atrasadas');
+      criteria.push('✅ Configuração de frequência e destinatários das notificações');
+    }
+    
+    if (descLower.includes('git') || descLower.includes('commit') || descLower.includes('repositório')) {
+      criteria.push('✅ Integração com repositórios Git (GitHub, GitLab, Bitbucket)');
+      criteria.push('✅ Associação automática de commits às tarefas correspondentes');
+      criteria.push('✅ Visualização do histórico de commits por tarefa');
+    }
+    
+    if (descLower.includes('dashboard') || descLower.includes('tempo real') || descLower.includes('progresso')) {
+      criteria.push('✅ Dashboard interativo com métricas em tempo real');
+      criteria.push('✅ Gráficos atualizados automaticamente sem necessidade de refresh');
+      criteria.push('✅ Visualização mobile-responsive do dashboard');
     }
     
     // Critérios universais
-    criteria.push('✅ Interface responsiva e acessível');
-    criteria.push('✅ Tempo de resposta inferior a 3 segundos');
-    criteria.push('✅ Tratamento adequado de erros e exceções');
-    criteria.push('✅ Documentação técnica atualizada');
-    criteria.push('✅ Testes automatizados cobrindo fluxos críticos');
+    criteria.push('✅ Interface responsiva e acessível (WCAG 2.1)');
+    criteria.push('✅ Tempo de resposta inferior a 2 segundos para operações críticas');
+    criteria.push('✅ Tratamento adequado de erros com mensagens claras ao usuário');
+    criteria.push('✅ Documentação técnica da API e do código fonte');
+    criteria.push('✅ Testes unitários e de integração cobrindo 80% do código');
+    criteria.push('✅ Backup automático dos dados críticos');
+    criteria.push('✅ Logs de auditoria para ações importantes');
     
     return criteria.join('\n');
   };
@@ -268,15 +350,37 @@ async function generateFallbackStory(projectTitle, clientName, description) {
   const generateTestScenarios = () => {
     const scenarios = [];
     
-    scenarios.push('## 🔄 Cenário Principal - Fluxo Feliz');
-    scenarios.push('**Dado** que o usuário acessa o sistema com credenciais válidas');
-    scenarios.push('**Quando** executa a funcionalidade principal com dados corretos');
-    scenarios.push('**Então** deve obter o resultado esperado com confirmação');
+    if (descLower.includes('sprint') || descLower.includes('tarefa')) {
+      scenarios.push('## 🔄 Cenário Principal - Criação de Sprint');
+      scenarios.push('**Dado** que o Scrum Master está logado no sistema');
+      scenarios.push('**Quando** cria uma nova sprint com datas e objetivos definidos');
+      scenarios.push('**Então** o sistema deve criar a sprint e disponibilizar para atribuição de tarefas');
+      
+      scenarios.push('\n## 📋 Cenário - Atribuição de Tarefas');
+      scenarios.push('**Dado** que uma sprint está aberta no sistema');
+      scenarios.push('**Quando** o Scrum Master atribui tarefas aos desenvolvedores');
+      scenarios.push('**Então** os desenvolvedores recebem notificações e as tarefas aparecem em seus dashboards');
+    }
     
+    if (descLower.includes('dashboard') || descLower.includes('tempo real')) {
+      scenarios.push('\n## 📊 Cenário - Acompanhamento em Tempo Real');
+      scenarios.push('**Dado** que existem tarefas em andamento na sprint');
+      scenarios.push('**Quando** um desenvolvedor atualiza o status de uma tarefa');
+      scenarios.push('**Então** o dashboard deve refletir imediatamente a mudança para todos os usuários');
+    }
+    
+    if (descLower.includes('relatóri') || descLower.includes('chart')) {
+      scenarios.push('\n## 📈 Cenário - Geração de Relatórios');
+      scenarios.push('**Dado** que a sprint foi concluída');
+      scenarios.push('**Quando** o gerente solicita o relatório de velocity');
+      scenarios.push('**Então** o sistema deve gerar o relatório com dados consistentes e opções de exportação');
+    }
+    
+    // Cenários genéricos
     scenarios.push('\n## ⚠️ Cenário Alternativo - Dados Parciais');
     scenarios.push('**Dado** que o usuário preenche apenas campos obrigatórios');
     scenarios.push('**Quando** submete o formulário');
-    scenarios.push('**Então** sistema deve processar e sugerir complementos');
+    scenarios.push('**Então** sistema deve processar e sugerir complementos quando aplicável');
     
     scenarios.push('\n## ❌ Cenário de Exceção - Dados Inválidos');
     scenarios.push('**Dado** que o usuário insere informações inconsistentes');
@@ -290,7 +394,7 @@ async function generateFallbackStory(projectTitle, clientName, description) {
 SISTEMA: ${projectTitle.toUpperCase()}
 CLIENTE: ${clientName}
 DATA: ${new Date().toLocaleDateString('pt-BR')}
-VERSÃO: 4.0 - Processamento Inteligente
+VERSÃO: 4.0 - Processamento Inteligente Avançado
 
 ================================================================================
 HISTÓRIA DE USUÁRIO
@@ -322,25 +426,34 @@ ${generateTestScenarios()}
 REQUISITOS NÃO FUNCIONAIS
 ================================================================================
 
-- **Performance:** Tempo de resposta < 3s para 95% das requisições
-- **Segurança:** Autenticação e autorização implementadas
-- **Usabilidade:** Interface intuitiva seguindo heurísticas de Nielsen
+- **Performance:** Tempo de resposta < 2s para operações críticas
+- **Segurança:** Autenticação RBAC (Role-Based Access Control)
+- **Usabilidade:** Interface intuitiva seguindo princípios de UX
 - **Confiabilidade:** Disponibilidade de 99.5% em produção
-- **Manutenibilidade:** Código documentado e testado
+- **Escalabilidade:** Suporte a múltiplas equipes e projetos
+- **Manutenibilidade:** Código documentado e cobertura de testes >80%
 
 ================================================================================
 INFORMAÇÕES TÉCNICAS
 ================================================================================
 
-- **Processamento:** Análise inteligente de padrões
-- **Características detectadas:** ${descLower.includes('login') ? 'Autenticação' : ''} ${descLower.includes('relatório') ? 'Relatórios' : ''} ${descLower.includes('cadastro') ? 'Cadastros' : ''}
+- **Processamento:** Análise contextual inteligente de requisitos
+- **Características detectadas:** ${[
+  descLower.includes('sprint') ? 'Gestão Ágil' : '',
+  descLower.includes('dashboard') ? 'Dashboards' : '',
+  descLower.includes('relatóri') ? 'Relatórios' : '',
+  descLower.includes('notificaç') ? 'Notificações' : '',
+  descLower.includes('git') ? 'Integração Git' : '',
+  descLower.includes('perfil') ? 'Controle de Acesso' : ''
+].filter(Boolean).join(', ')}
+- **Complexidade:** ${description.length > 200 ? 'Alta' : description.length > 100 ? 'Média' : 'Baixa'}
 - **Status:** Pronto para refinamento técnico
 
 ================================================================================
 
 DOCUMENTO GERADO POR PROCESSAMENTO INTELIGENTE
 SINAPSYS TECNOLOGIA - ${new Date().toLocaleString('pt-BR')}
-VERSÃO 4.0 - ANÁLISE DE PADRÕES AVANÇADA
+VERSÃO 4.0 - ANÁLISE CONTEXTUAL AVANÇADA
   `.trim();
 }
 
@@ -353,7 +466,8 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     hasAI: !!groq,
     mode: groq ? 'IA Groq Ativa' : 'Processamento Inteligente',
-    encoding: 'UTF-8'
+    encoding: 'UTF-8',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -363,7 +477,8 @@ app.post('/api/test', (req, res) => {
     message: 'API funcionando corretamente',
     version: '4.0',
     hasAI: !!groq,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -371,6 +486,12 @@ app.post('/api/test', (req, res) => {
 app.post('/api/generate-story', async (req, res) => {
   try {
     const { projectTitle, clientName, description } = req.body;
+
+    console.log(`📝 Nova solicitação recebida:`, {
+      projectTitle,
+      clientName,
+      descriptionLength: description?.length
+    });
 
     // Validações
     if (!projectTitle || !clientName || !description) {
@@ -392,10 +513,14 @@ app.post('/api/generate-story', async (req, res) => {
       });
     }
 
-    console.log(`📝 Processando solicitação: ${projectTitle} - ${clientName}`);
+    console.log(`🎯 Processando: ${projectTitle} - ${clientName}`);
     
     // ✅ GERAR COM IA GROQ OU FALLBACK
+    const startTime = Date.now();
     const story = await generateWithAI(projectTitle, clientName, description);
+    const processingTime = Date.now() - startTime;
+
+    console.log(`✅ História gerada em ${processingTime}ms`);
 
     res.json({
       success: true,
@@ -406,6 +531,7 @@ app.post('/api/generate-story', async (req, res) => {
         generatedAt: new Date().toISOString(),
         descriptionLength: description.length,
         wordCount: description.split(/\s+/).length,
+        processingTime: `${processingTime}ms`,
         processed: true,
         version: '4.0',
         aiGenerated: !!groq,
@@ -414,7 +540,9 @@ app.post('/api/generate-story', async (req, res) => {
           hasAuth: description.toLowerCase().includes('login') || description.toLowerCase().includes('autenticação'),
           hasReports: description.toLowerCase().includes('relatório') || description.toLowerCase().includes('relatorio'),
           hasCRUD: description.toLowerCase().includes('cadastro') || description.toLowerCase().includes('registro'),
-          hasSearch: description.toLowerCase().includes('consulta') || description.toLowerCase().includes('buscar')
+          hasSearch: description.toLowerCase().includes('consulta') || description.toLowerCase().includes('buscar'),
+          hasAgile: description.toLowerCase().includes('sprint') || description.toLowerCase().includes('scrum'),
+          hasGit: description.toLowerCase().includes('git') || description.toLowerCase().includes('commit')
         }
       }
     });
