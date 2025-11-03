@@ -54,113 +54,40 @@ function App() {
     alert('História copiada para a área de transferência!');
   };
 
-  // ✅ FUNÇÃO DOWNLOAD WORD - LOGO DA PASTA PUBLIC
-  const downloadWord = () => {
-    const projectTitle = formData.projectTitle || 'documento';
-    const clientName = formData.clientName || 'Não informado';
-    
-    // URL da logo na pasta public do servidor
-    const logoUrl = 'https://gerador-historias-backend.onrender.com/logo-sinapsys2.png';
+  // ✅ FUNÇÃO DOWNLOAD WORD - CHAMANDO API DO SERVIDOR
+  const downloadWord = async () => {
+    try {
+      const backendUrl = 'https://gerador-historias-backend.onrender.com';
+      
+      const response = await fetch(`${backendUrl}/api/generate-word-document`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectTitle: formData.projectTitle,
+          clientName: formData.clientName,
+          storyContent: story
+        }),
+      });
 
-    const wordContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>História de Usuário - ${projectTitle}</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 25px;
-            font-family: "Arial", sans-serif;
-            line-height: 1.6;
-            color: #000000;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 20px;
-        }
-        
-        .logo-container {
-            margin-bottom: 15px;
-        }
-        
-        .logo {
-            height: 60px;
-            display: block;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            color: #2c3e50;
-            margin: 10px 0 5px 0;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .project-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-left: 4px solid #3498db;
-            margin: 15px 0;
-            font-size: 12px;
-            border: 1px solid #ddd;
-        }
-        
-        .content {
-            margin: 25px 0;
-            font-size: 12px;
-            white-space: pre-wrap;
-            font-family: "Arial", sans-serif;
-            line-height: 1.5;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
-            font-size: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="logo-container">
-            <img src="${logoUrl}" alt="Sinapsys Tecnologia" class="logo">
-        </div>
-        <h1>HISTÓRIA DE USUÁRIO</h1>
-        <div class="project-info">
-            <strong>Sistema:</strong> ${projectTitle}<br>
-            <strong>Cliente:</strong> ${clientName}<br>
-            <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
-            <strong>Status:</strong> Em Desenvolvimento
-        </div>
-    </div>
-    
-    <div class="content">
-        ${story.replace(/\n/g, '<br>')}
-    </div>
-    
-    <div class="footer">
-        Documento gerado pela aplicação - Sinapsys Tecnologia<br>
-        ${new Date().toLocaleString('pt-BR')}
-    </div>
-</body>
-</html>`;
-
-    const blob = new Blob([wordContent], { type: 'application/msword' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `historia-usuario-${projectTitle.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `historia-usuario-${formData.projectTitle.replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')}.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert('Erro ao gerar documento Word');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao conectar com o servidor');
+    }
   };
 
   return (
