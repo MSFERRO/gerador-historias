@@ -25,9 +25,7 @@ function App() {
     setStory('');
 
     try {
-      const backendUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://seu-backend.onrender.com' 
-        : 'http://localhost:3001';
+      const backendUrl = 'https://gerador-historias-backend.onrender.com'; 
 
       const response = await fetch(`${backendUrl}/api/generate-story`, {
         method: 'POST',
