@@ -303,6 +303,107 @@ app.post('/api/generate-story', async (req, res) => {
     }
 });
 
+// ✅ NOVA ROTA PARA DOWNLOAD DE WORD
+app.post('/api/generate-word-document', async (req, res) => {
+    try {
+        const { projectTitle, clientName, storyContent } = req.body;
+
+        if (!projectTitle || !storyContent) {
+            return res.status(400).json({
+                success: false,
+                error: 'Título do projeto e conteúdo da história são obrigatórios'
+            });
+        }
+
+        const wordContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+            <meta charset="UTF-8">
+            <title>História de Usuário - ${projectTitle}</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    line-height: 1.6;
+                    margin: 40px;
+                    color: #333;
+                }
+                .header { 
+                    text-align: center; 
+                    margin-bottom: 30px;
+                    border-bottom: 2px solid #333;
+                    padding-bottom: 20px;
+                }
+                h1 { 
+                    color: #2c3e50; 
+                    margin: 10px 0;
+                    font-size: 24px;
+                }
+                .project-info {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    border-left: 4px solid #3498db;
+                    margin: 15px 0;
+                    font-size: 14px;
+                }
+                .content {
+                    margin: 20px 0;
+                }
+                pre {
+                    white-space: pre-wrap;
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.4;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                    color: #7f8c8d;
+                    font-size: 11px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>HISTÓRIA DE USUÁRIO</h1>
+                <div class="project-info">
+                    <strong>Sistema:</strong> ${projectTitle}<br>
+                    <strong>Cliente:</strong> ${clientName || 'Não informado'}<br>
+                    <strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
+                    <strong>Status:</strong> Em Desenvolvimento
+                </div>
+            </div>
+            
+            <div class="content">
+                <pre>${storyContent}</pre>
+            </div>
+            
+            <div class="footer">
+                Documento gerado pela aplicação - Sinapsys Tecnologia<br>
+                ${new Date().toLocaleString('pt-BR')}
+            </div>
+        </body>
+        </html>
+        `;
+
+        // Configurar headers para download
+        res.setHeader('Content-Type', 'application/vnd.ms-word');
+        res.setHeader('Content-Disposition', `attachment; filename="historia-usuario-${projectTitle.replace(/\s+/g, '-')}.doc"`);
+        
+        res.send(wordContent);
+
+    } catch (error) {
+        console.error('💥 Erro ao gerar documento Word:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao gerar documento Word'
+        });
+    }
+});
+
 // ✅ ROTA RAIZ - APENAS INFO DA API
 app.get('/', (req, res) => {
     res.json({
@@ -311,7 +412,8 @@ app.get('/', (req, res) => {
         endpoints: {
             health: '/api/health',
             testAI: '/api/test-ai',
-            generateStory: '/api/generate-story (POST)'
+            generateStory: '/api/generate-story (POST)',
+            generateWordDocument: '/api/generate-word-document (POST)'
         },
         aiStatus: aiStatus,
         timestamp: new Date().toISOString()
@@ -323,8 +425,8 @@ app.listen(PORT, () => {
     console.log('\n========================================');
     console.log('🚀 SINAPSYS BACKEND API - ONLINE');
     console.log(`📍 Porta: ${PORT}`);
-    console.log(`🌐 Ambiente: ${process.env.NODE_ENV}`);
+    console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🤖 AI Status: ${aiStatus}`);
-    console.log(`🔗 URL: https://gerador-historias-backend.onrender.com`);
+    console.log(`🔗 URL: http://localhost:${PORT}`);
     console.log('========================================\n');
 });
