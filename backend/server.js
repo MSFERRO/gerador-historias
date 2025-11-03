@@ -461,6 +461,7 @@ app.use((error, req, res, next) => {
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/build')));
   
+  // ✅ CORREÇÃO APLICADA AQUI - use app.get em vez de app.get
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
   });
@@ -476,4 +477,3 @@ app.listen(PORT, () => {
   console.log(`⚡ Versão: 4.0 - IA Groq Integrada`);
   console.log('='.repeat(60));
 });
-EOF
