@@ -431,20 +431,30 @@ app.post('/api/generate-story', async (req, res) => {
   }
 });
 
-// 404 handler
-app.use((req, res) => {
+/// 404 handler para rotas da API
+app.use('/api/*', (req, res) => {
   res.status(404).json({
-    error: 'Rota não encontrada',
+    error: 'Rota da API não encontrada',
     path: req.originalUrl,
     timestamp: new Date().toISOString(),
     availableRoutes: [
       'GET /api/health',
-      'POST /api/generate-story',
+      'POST /api/generate-story', 
       'POST /api/test'
     ],
     version: '4.0'
   });
 });
+
+// Serve frontend em produção
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  
+  // ✅ SOLUÇÃO FINAL: Fallback para SPA sem usar *
+  app.use((req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((error, req, res, next) => {
@@ -456,16 +466,6 @@ app.use((error, req, res, next) => {
     version: '4.0'
   });
 });
-
-// Serve frontend em produção
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-  
-  // ✅ SOLUÇÃO RECOMENDADA: Use app.use para fallback
-  app.use('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
-  });
-}
 
 // Iniciar servidor
 app.listen(PORT, () => {
