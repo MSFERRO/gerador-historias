@@ -344,7 +344,7 @@ VERSÃO 4.0 - ANÁLISE DE PADRÕES AVANÇADA
   `.trim();
 }
 
-// Health check
+// ✅ HEALTH CHECK
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -357,7 +357,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Rota para teste rápido
+// ✅ ROTA PARA TESTE RÁPIDO
 app.post('/api/test', (req, res) => {
   res.json({
     message: 'API funcionando corretamente',
@@ -431,32 +431,49 @@ app.post('/api/generate-story', async (req, res) => {
   }
 });
 
-/// 404 handler para rotas da API
-app.use('/api/*', (req, res) => {
-  res.status(404).json({
-    error: 'Rota da API não encontrada',
-    path: req.originalUrl,
-    timestamp: new Date().toISOString(),
-    availableRoutes: [
-      'GET /api/health',
-      'POST /api/generate-story', 
-      'POST /api/test'
-    ],
-    version: '4.0'
-  });
-});
-
-// Serve frontend em produção
+// ✅ SERVE FRONTEND EM PRODUÇÃO - SEM USAR *
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/build')));
   
-  // ✅ SOLUÇÃO FINAL: Fallback para SPA sem usar *
+  // Fallback para SPA - sem usar padrão *
   app.use((req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
   });
 }
 
-// Error handling middleware
+// ✅ 404 HANDLER UNIFICADO - SEM USAR *
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    // Para rotas da API não encontradas
+    res.status(404).json({
+      error: 'Rota da API não encontrada',
+      path: req.originalUrl,
+      timestamp: new Date().toISOString(),
+      availableRoutes: [
+        'GET /api/health',
+        'POST /api/generate-story',
+        'POST /api/test'
+      ],
+      version: '4.0'
+    });
+  } else {
+    // Para rotas não-API
+    if (process.env.NODE_ENV === 'production') {
+      // Em produção, serve o frontend
+      res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+    } else {
+      // Em desenvolvimento, retorna JSON
+      res.status(404).json({
+        error: 'Rota não encontrada',
+        path: req.originalUrl,
+        timestamp: new Date().toISOString(),
+        version: '4.0'
+      });
+    }
+  }
+});
+
+// ✅ ERROR HANDLING MIDDLEWARE
 app.use((error, req, res, next) => {
   console.error('🔥 Error middleware:', error);
   res.status(500).json({
@@ -467,7 +484,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Iniciar servidor
+// ✅ INICIAR SERVIDOR
 app.listen(PORT, () => {
   console.log('🚀 BACKEND SINAPSYS - VERSÃO 4.0 INICIADO');
   console.log(`📍 Porta: ${PORT}`);
